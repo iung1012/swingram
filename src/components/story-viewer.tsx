@@ -374,7 +374,7 @@ export function StoryRingButton({
         </svg>
         <span className="absolute inset-[6px] overflow-hidden rounded-full bg-secondary ring-2 ring-background">
           {avatar ? (
-            <img src={avatar} alt="" className="h-full w-full object-cover" />
+            <SignedImage bucket="avatars" path={avatar} alt="" className="h-full w-full object-cover" />
           ) : (
             <span className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase text-muted-foreground">
               {label.slice(0, 2)}
