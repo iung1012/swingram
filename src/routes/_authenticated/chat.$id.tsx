@@ -80,7 +80,7 @@ function ChatRoom() {
     if (error) toast.error("Falha ao enviar");
   }
 
-  if (!conv) return <p className="p-6 text-center">Carregando...</p>;
+  if (!conv) return <SpiralLoaderBlock />;
 
   return (
     <div className="mx-auto flex h-[calc(100vh-5rem)] max-w-md flex-col px-2 pt-2">
