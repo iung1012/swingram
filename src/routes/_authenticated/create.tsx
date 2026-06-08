@@ -56,6 +56,7 @@ function CreatePost() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const { user } = useAuth();
+  const { data: profile } = useMyProfile(user?.id);
   const [files, setFiles] = useState<Picked[]>([]);
   const [active, setActive] = useState(0);
   const [caption, setCaption] = useState("");
