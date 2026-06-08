@@ -1,11 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile, useIsStaff } from "@/hooks/use-profile";
 import { SignedImage } from "@/components/signed-image";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
+import { toast } from "sonner";
 import {
   Settings,
   BadgeCheck,
@@ -16,6 +18,8 @@ import {
   ChevronRight,
   Grid3x3,
   Sparkles,
+  Camera,
+  ImagePlus,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/profile")({
@@ -27,8 +31,12 @@ export const Route = createFileRoute("/_authenticated/profile")({
 function MyProfile() {
   const { user } = useAuth();
   const nav = useNavigate();
+  const qc = useQueryClient();
   const { data: profile } = useMyProfile(user?.id);
   const { data: roles } = useIsStaff(user?.id);
+  const avatarInput = useRef<HTMLInputElement | null>(null);
+  const bannerInput = useRef<HTMLInputElement | null>(null);
+  const [busy, setBusy] = useState<"avatar" | "banner" | null>(null);
 
   const { data: posts } = useQuery({
     queryKey: ["my-posts", user?.id],
@@ -49,6 +57,44 @@ function MyProfile() {
     nav({ to: "/auth" });
   }
 
+  async function uploadImage(
+    kind: "avatar" | "banner",
+    file: File,
+  ) {
+    if (!user) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione uma imagem.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Imagem muito grande (máx 8MB).");
+      return;
+    }
+    setBusy(kind);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${user.id}/${kind}-${Date.now()}.${ext}`;
+      const up = await supabase.storage.from("avatars").upload(path, file, {
+        upsert: false,
+        contentType: file.type,
+      });
+      if (up.error) throw up.error;
+      const field = kind === "avatar" ? "avatar_url" : "banner_url";
+      const { error } = await supabase
+        .from("profiles")
+        .update({ [field]: path } as never)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      toast.success(kind === "avatar" ? "Foto atualizada" : "Capa atualizada");
+      qc.invalidateQueries({ queryKey: ["profile", user.id] });
+      qc.invalidateQueries({ queryKey: ["my-profile", user.id] });
+    } catch (err: any) {
+      toast.error(err.message ?? "Falha ao enviar");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (!profile)
     return (
       <div className="mx-auto max-w-2xl px-4 pt-10">
@@ -58,30 +104,86 @@ function MyProfile() {
 
   const approvedCount = (posts ?? []).filter((p: any) => p.moderation_status === "approved").length;
   const totalCount = (posts ?? []).length;
+  const banner = (profile as any).banner_url as string | null | undefined;
 
   return (
     <div className="mx-auto max-w-2xl px-4 pb-12 pt-6">
-      {/* Hero card — surface ladder, hairline border, no shadow */}
+      <input
+        ref={avatarInput}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) uploadImage("avatar", f);
+        }}
+      />
+      <input
+        ref={bannerInput}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) uploadImage("banner", f);
+        }}
+      />
+
+      {/* Hero card */}
       <section className="relative overflow-hidden rounded-2xl border border-border bg-card">
-        {/* faint brasa wash at top — single decorative moment */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-32 opacity-[0.18]"
-          style={{
-            background:
-              "radial-gradient(120% 80% at 50% 0%, var(--fire) 0%, transparent 60%)",
-          }}
-        />
-        <div className="relative p-5">
-          <div className="flex items-start gap-4">
-          <VerifiedAvatar
-            bucket="avatars"
-            path={profile.avatar_url}
-            alt={profile.display_name}
-            verified={profile.verified}
-            className="h-20 w-20"
-          />
-            <div className="min-w-0 flex-1 pt-1">
+        {/* Banner / cover */}
+        <div className="relative h-32 w-full overflow-hidden bg-secondary/40">
+          {banner ? (
+            <SignedImage
+              bucket="avatars"
+              path={banner}
+              alt="Capa"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div
+              aria-hidden
+              className="h-full w-full"
+              style={{
+                background:
+                  "radial-gradient(120% 80% at 50% 0%, var(--fire) 0%, transparent 60%), oklch(0.18 0.02 30)",
+              }}
+            />
+          )}
+          <button
+            type="button"
+            onClick={() => bannerInput.current?.click()}
+            disabled={busy === "banner"}
+            className="absolute right-3 top-3 inline-flex h-8 items-center gap-1.5 rounded-full border border-border/60 bg-background/85 px-3 text-[12px] font-medium text-foreground backdrop-blur transition hover:bg-background disabled:opacity-50"
+          >
+            <ImagePlus className="h-3.5 w-3.5" strokeWidth={2.2} />
+            {busy === "banner" ? "Enviando…" : banner ? "Trocar capa" : "Adicionar capa"}
+          </button>
+        </div>
+
+        <div className="relative p-5 pt-0">
+          <div className="-mt-10 flex items-end gap-4">
+            <div className="relative">
+              <VerifiedAvatar
+                bucket="avatars"
+                path={profile.avatar_url}
+                alt={profile.display_name}
+                verified={profile.verified}
+                className="h-20 w-20 ring-4 ring-card"
+              />
+              <button
+                type="button"
+                onClick={() => avatarInput.current?.click()}
+                disabled={busy === "avatar"}
+                aria-label="Trocar foto de perfil"
+                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm transition hover:bg-secondary disabled:opacity-50"
+              >
+                <Camera className="h-3.5 w-3.5" strokeWidth={2.2} />
+              </button>
+            </div>
+            <div className="min-w-0 flex-1 pb-1">
               <div className="flex items-center gap-1.5">
                 <h1 className="truncate text-[19px] font-semibold tracking-tight">
                   {profile.display_name}
@@ -115,14 +217,12 @@ function MyProfile() {
             </div>
           )}
 
-          {/* stat ladder — surface notch above the card */}
           <div className="mt-5 grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border bg-secondary/40">
             <Stat label="Posts" value={totalCount} />
             <Stat label="Aprovados" value={approvedCount} />
             <Stat label="Status" value={profile.verified ? "Verificado" : "Padrão"} small />
           </div>
 
-          {/* primary action: single solid pill */}
           {!profile.verified && (
             <Link
               to="/verify"
@@ -135,7 +235,6 @@ function MyProfile() {
         </div>
       </section>
 
-      {/* Menu list — settings-style rows */}
       <section className="mt-5 overflow-hidden rounded-2xl border border-border bg-card">
         <Row to="/settings" icon={Settings} label="Configurações" />
         <Divider />
@@ -158,7 +257,6 @@ function MyProfile() {
         Sair da conta
       </button>
 
-      {/* Posts grid */}
       <section className="mt-7">
         <div className="mb-2.5 flex items-center justify-between px-1">
           <h2 className="inline-flex items-center gap-1.5 text-[13px] font-semibold tracking-tight text-foreground">
