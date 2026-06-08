@@ -318,13 +318,18 @@ export default function MapView() {
             {selected && (
               <div className="absolute inset-x-3 bottom-3 z-[500] rounded-2xl border border-border bg-card/95 p-3 backdrop-blur">
                 <div className="flex items-center gap-3">
-                  {selected.avatar_url ? (
-                    <img src={selected.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
-                  ) : (
-                    <div className="h-10 w-10 rounded-full bg-secondary" />
-                  )}
+                  <VerifiedAvatar
+                    bucket="avatars"
+                    path={selected.avatar_url}
+                    alt={selected.display_name ?? ""}
+                    verified={!!selected.verified}
+                    className="h-10 w-10 shrink-0"
+                  />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{selected.display_name}</p>
+                    <p className="flex items-center gap-1 truncate text-sm font-semibold">
+                      <span className="truncate">{selected.display_name}</span>
+                      {selected.verified && <VerifiedBadge />}
+                    </p>
                     <p className="truncate text-xs text-muted-foreground">
                       @{selected.handle}{selected.km ? ` · ~${selected.km.toFixed(1)} km` : ""}
                     </p>
