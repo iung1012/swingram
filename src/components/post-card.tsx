@@ -64,6 +64,7 @@ export function PostCard({
   const [showComments, setShowComments] = useState(false);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [likesOpen, setLikesOpen] = useState(false);
   const hasMedia = (post.media ?? []).length > 0;
   const current = post.media[active];
 
