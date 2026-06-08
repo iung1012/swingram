@@ -404,6 +404,7 @@ function PublicProfile() {
             <ZoomPostContent
               postId={zoomPost.id}
               url={zoomPost.url}
+              kind={zoomPost.kind}
               caption={zoomPost.caption}
               currentUserId={user?.id ?? null}
             />
