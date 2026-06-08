@@ -10,13 +10,6 @@ import { SignedImage } from "@/components/signed-image";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { toast } from "sonner";
 
-async function requireAdmin() {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw redirect({ to: "/auth" });
-  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
-  const list = (roles ?? []).map((r) => r.role);
-  if (!list.includes("admin")) throw redirect({ to: "/home" });
-}
 
 export const Route = createFileRoute("/_authenticated/admin/users")({
   ssr: false,
