@@ -211,7 +211,7 @@ export default function MapView() {
         const clusterId = (feat.properties as any)?.cluster_id;
         const src = map.getSource(SRC_ID) as maplibregl.GeoJSONSource;
         src.getClusterExpansionZoom(clusterId).then((zoom) => {
-          const coords = (feat.geometry as GeoJSON.Point).coordinates as [number, number];
+          const coords = (feat.geometry as Point).coordinates as [number, number];
           map.easeTo({ center: coords, zoom: zoom + 0.001, duration: 500 });
         }).catch(() => {});
       });
@@ -236,7 +236,7 @@ export default function MapView() {
           ? distanceKm({ lat: me.lat_snap, lng: me.lng_snap }, { lat: profile.lat_snap, lng: profile.lng_snap })
           : 0;
         setSelected({ ...profile, km });
-        const coords = (feat.geometry as GeoJSON.Point).coordinates as [number, number];
+        const coords = (feat.geometry as Point).coordinates as [number, number];
         map.easeTo({ center: coords, duration: 350 });
       });
 
