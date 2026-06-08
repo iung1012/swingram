@@ -7,6 +7,7 @@ import { useMyProfile } from "@/hooks/use-profile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PostCard, type PostCardData } from "@/components/post-card";
 import { Flame, Search } from "lucide-react";
+import { SpiralLoaderBlock } from "@/components/spiral-loader";
 
 export const Route = createFileRoute("/_authenticated/home")({
   ssr: false,
