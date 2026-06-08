@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck } from "lucide-react";
+import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck, Heart, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FireLike } from "./fire-like";
 import { SignedMedia } from "./signed-media";
