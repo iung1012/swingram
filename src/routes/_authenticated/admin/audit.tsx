@@ -14,12 +14,18 @@ function AuditAdmin() {
   const { data } = useQuery({
     queryKey: ["adm-audit"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: logs } = await supabase
         .from("audit_logs")
-        .select("*, admin:profiles!audit_logs_admin_id_fkey(handle, display_name)")
+        .select("*")
         .order("created_at", { ascending: false })
         .limit(200);
-      return data ?? [];
+      const ids = Array.from(new Set((logs ?? []).map((l: any) => l.admin_id).filter(Boolean)));
+      let profMap = new Map<string, any>();
+      if (ids.length > 0) {
+        const { data: profs } = await supabase.from("profiles").select("user_id, handle").in("user_id", ids);
+        profMap = new Map((profs ?? []).map((p: any) => [p.user_id, p]));
+      }
+      return (logs ?? []).map((l: any) => ({ ...l, admin: l.admin_id ? profMap.get(l.admin_id) : null }));
     },
   });
 
