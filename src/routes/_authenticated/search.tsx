@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
 import { distanceKm } from "@/lib/geo";
-import { SignedImage } from "@/components/signed-image";
+import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { Search as SearchIcon, ChevronRight, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
