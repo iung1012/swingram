@@ -622,41 +622,6 @@ function CreatePost() {
         )}
       </section>
 
-      {/* STICKY PUBLISH BAR */}
-      <div
-        className="fixed inset-x-0 z-50 border-t border-border bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70"
-        style={{ bottom: "calc(64px + env(safe-area-inset-bottom))" }}
-      >
-        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
-          <div className="hidden flex-1 text-[12px] text-muted-foreground sm:block">
-            {hasMedia
-              ? `${files.length} mídia(s) · vai para revisão`
-              : caption.trim()
-                ? "Post só de texto"
-                : "Adicione mídia ou texto"}
-          </div>
-          <button
-            onClick={submit}
-            disabled={!canSubmit}
-            className="relative ml-auto flex h-11 min-w-[160px] items-center justify-center overflow-hidden rounded-xl px-5 text-[14px] font-medium text-primary-foreground transition active:scale-[0.99] disabled:opacity-70"
-            style={{ background: "var(--gradient-brasa-h)" }}
-          >
-            {submitting && hasMedia && (
-              <span
-                className="absolute inset-y-0 left-0 bg-white/20 transition-[width]"
-                style={{ width: `${progress}%` }}
-              />
-            )}
-            <span className="relative">
-              {submitting
-                ? hasMedia
-                  ? `Enviando ${progress}%`
-                  : "Enviando…"
-                : "Publicar"}
-            </span>
-          </button>
-        </div>
-      </div>
 
       {/* FLOATING ACTION BUTTON */}
       {canSubmit && (
