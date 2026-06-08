@@ -435,37 +435,45 @@ function ZoomPostContent({
 
   const { data: likeData } = useQuery({
     queryKey: ["post-likes", postId, currentUserId],
-    enabled: !!currentUserId,
     queryFn: async () => {
       const { count } = await supabase
         .from("likes")
         .select("post_id", { count: "exact", head: true })
         .eq("post_id", postId);
-      const { data: me } = await supabase
-        .from("likes")
-        .select("post_id")
-        .eq("post_id", postId)
-        .eq("user_id", currentUserId!)
-        .maybeSingle();
-      return { likes: count ?? 0, likedByMe: !!me };
+      let likedByMe = false;
+      if (currentUserId) {
+        const { data: me } = await supabase
+          .from("likes")
+          .select("post_id")
+          .eq("post_id", postId)
+          .eq("user_id", currentUserId)
+          .maybeSingle();
+        likedByMe = !!me;
+      }
+      return { likes: count ?? 0, likedByMe };
     },
   });
 
-  const [liked, setLiked] = useState(likeData?.likedByMe ?? false);
-  const [likes, setLikes] = useState(likeData?.likes ?? 0);
+  const liked = likeData?.likedByMe ?? false;
+  const likes = likeData?.likes ?? 0;
 
   async function toggleLike() {
     if (!currentUserId) return;
-    const next = !liked;
-    setLiked(next);
-    setLikes((l) => l + (next ? 1 : -1));
+    const key = ["post-likes", postId, currentUserId];
+    const prev = qc.getQueryData<{ likes: number; likedByMe: boolean }>(key);
+    const next = !(prev?.likedByMe ?? liked);
+    qc.setQueryData(key, {
+      likes: (prev?.likes ?? likes) + (next ? 1 : -1),
+      likedByMe: next,
+    });
     if (next) {
       await supabase.from("likes").insert({ post_id: postId, user_id: currentUserId });
     } else {
       await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", currentUserId);
     }
     qc.invalidateQueries({ queryKey: ["post-likes", postId] });
-    qc.invalidateQueries({ queryKey: ["post-likes", postId, currentUserId] });
+    qc.invalidateQueries({ queryKey: ["feed"] });
+    qc.invalidateQueries({ queryKey: ["profile-stats"] });
   }
 
   const { data: comments } = useQuery({
