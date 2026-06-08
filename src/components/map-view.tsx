@@ -72,9 +72,20 @@ export default function MapView() {
   const { user } = useAuth();
   const { data: me } = useMyProfile(user?.id);
 
+  // Live snapped position from the device geolocation API. Falls back to the
+  // profile's stored lat_snap/lng_snap until the user grants permission.
+  const [livePos, setLivePos] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+
+  const selfPos = useMemo<{ lat: number; lng: number } | null>(() => {
+    if (livePos) return livePos;
+    if (me?.lat_snap && me?.lng_snap) return { lat: me.lat_snap, lng: me.lng_snap };
+    return null;
+  }, [livePos, me?.lat_snap, me?.lng_snap]);
+
   const center = useMemo<[number, number]>(
-    () => (me?.lat_snap && me?.lng_snap ? [me.lat_snap, me.lng_snap] : [-14.235, -51.9253]),
-    [me?.lat_snap, me?.lng_snap]
+    () => (selfPos ? [selfPos.lat, selfPos.lng] : [-14.235, -51.9253]),
+    [selfPos]
   );
 
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
@@ -86,6 +97,47 @@ export default function MapView() {
   const profilesRef = useRef<Map<string, NearbyProfile>>(new Map());
   const [selected, setSelected] = useState<SelectedProfile | null>(null);
   const [visibleCount, setVisibleCount] = useState(0);
+
+  // Request current device location, snap it and persist to the profile.
+  const requestLocation = (opts: { silent?: boolean } = {}) => {
+    if (!user?.id) return;
+    if (!("geolocation" in navigator)) {
+      if (!opts.silent) toast.error("Geolocalização não suportada neste dispositivo");
+      return;
+    }
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const snapped = snapAndFuzz(user.id, pos.coords.latitude, pos.coords.longitude);
+        const next = { lat: snapped.lat_snap, lng: snapped.lng_snap };
+        setLivePos(next);
+        setGeoLoading(false);
+        try {
+          await supabase
+            .from("profiles")
+            .update({ lat_snap: next.lat, lng_snap: next.lng })
+            .eq("user_id", user.id);
+        } catch (e) {
+          console.warn("[MapView] failed to persist location", e);
+        }
+      },
+      (err) => {
+        setGeoLoading(false);
+        console.warn("[MapView] geolocation error", err);
+        if (!opts.silent) toast.error("Não foi possível obter sua localização");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  };
+
+  // Try to get a fresh position as soon as we know who the user is.
+  useEffect(() => {
+    if (!user?.id) return;
+    requestLocation({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+
 
   // init map
   useEffect(() => {
