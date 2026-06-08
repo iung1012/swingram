@@ -61,6 +61,7 @@ export function PostCard({
   const [liked, setLiked] = useState(post.liked_by_me);
   const [likes, setLikes] = useState(post.likes_count);
   const [saved, setSaved] = useState(post.saved_by_me);
+  const [commentsCount, setCommentsCount] = useState(post.comments_count);
   const [revealed, setRevealed] = useState(!post.nsfw || !defaultBlur);
   const [active, setActive] = useState(0);
   const [showComments, setShowComments] = useState(false);
@@ -73,6 +74,7 @@ export function PostCard({
 
   useEffect(() => setRevealed(!post.nsfw || !defaultBlur), [post.nsfw, defaultBlur]);
   useEffect(() => { setLiked(post.liked_by_me); setLikes(post.likes_count); }, [post.liked_by_me, post.likes_count]);
+  useEffect(() => { setCommentsCount(post.comments_count); }, [post.comments_count]);
 
   const COMMENTS_PAGE_SIZE = 15;
   const {
@@ -179,6 +181,7 @@ export function PostCard({
     if (error) toast.error("Falha ao apagar");
     else {
       toast.success("Comentário apagado");
+      setCommentsCount((c) => Math.max(0, c - 1));
       qc.invalidateQueries({ queryKey: ["post-comments", post.id] });
       qc.invalidateQueries({ queryKey: ["feed"] });
     }
@@ -214,6 +217,7 @@ export function PostCard({
       return;
     }
     setBody("");
+    setCommentsCount((c) => c + 1);
     qc.invalidateQueries({ queryKey: ["post-comments", post.id] });
     qc.invalidateQueries({ queryKey: ["feed"] });
   }
@@ -404,7 +408,7 @@ export function PostCard({
                   className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
                 >
                   <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
-                  {post.comments_count}
+                  {commentsCount}
                 </button>
               </DialogTrigger>
             </Dialog>
@@ -417,7 +421,7 @@ export function PostCard({
               className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
             >
               <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
-              {post.comments_count}
+              {commentsCount}
             </button>
           )}
         </div>
