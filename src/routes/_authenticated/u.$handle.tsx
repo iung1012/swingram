@@ -302,6 +302,12 @@ function PublicProfile() {
                 )}
               </div>
               <p className="mt-0.5 text-[13px] text-muted-foreground">@{profile.handle}</p>
+              {profile.verified && (
+                <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-primary">
+                  <BadgeCheck className="h-3 w-3" strokeWidth={2.5} />
+                  Perfil verificado
+                </p>
+              )}
               {profile.city && (
                 <p className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-muted-foreground">
                   <MapPin className="h-3 w-3" strokeWidth={2} />
