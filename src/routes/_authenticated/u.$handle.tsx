@@ -237,6 +237,7 @@ function PublicProfile() {
               >
                 <Share2 className="h-3.5 w-3.5" strokeWidth={2} />
                 Compartilhar
+              </button>
               <ReportDialog
                 targetType="user"
                 targetId={profile.user_id}
