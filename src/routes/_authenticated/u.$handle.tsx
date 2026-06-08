@@ -210,6 +210,33 @@ function PublicProfile() {
                 <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
                 Mensagem
               </button>
+              <button
+                onClick={toggleFollow}
+                className={
+                  "flex h-10 items-center justify-center gap-1.5 rounded-lg border text-[13px] font-medium transition " +
+                  (followState?.following
+                    ? "border-border bg-card text-foreground hover:bg-secondary/60"
+                    : "border-foreground/30 bg-secondary text-foreground hover:bg-secondary/80")
+                }
+              >
+                {followState?.following ? (
+                  <>
+                    <UserCheck className="h-3.5 w-3.5" strokeWidth={2.2} />
+                    Seguindo
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-3.5 w-3.5" strokeWidth={2.2} />
+                    Seguir
+                  </>
+                )}
+              </button>
+              <button
+                onClick={shareProfile}
+                className="flex h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-[13px] font-medium text-muted-foreground hover:text-foreground"
+              >
+                <Share2 className="h-3.5 w-3.5" strokeWidth={2} />
+                Compartilhar
               <ReportDialog
                 targetType="user"
                 targetId={profile.user_id}
