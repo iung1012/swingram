@@ -137,9 +137,9 @@ export function PostCard({ post, currentUserId, defaultBlur }: { post: PostCardD
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center gap-4">
           <FireLike liked={liked} count={likes} onToggle={toggleLike} disabled={!currentUserId} />
-          <Link to="/post/$id" params={{ id: post.id }} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
             <MessageCircle className="h-5 w-5" /> {post.comments_count}
-          </Link>
+          </span>
         </div>
         <button onClick={toggleSave} aria-label="Salvar" className="text-muted-foreground hover:text-foreground">
           {saved ? <BookmarkCheck className="h-5 w-5 text-primary" /> : <Bookmark className="h-5 w-5" />}
