@@ -193,6 +193,7 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          parent_id: string | null
           post_id: string
           status: string
           user_id: string
@@ -201,6 +202,7 @@ export type Database = {
           body: string
           created_at?: string
           id?: string
+          parent_id?: string | null
           post_id: string
           status?: string
           user_id: string
@@ -209,11 +211,19 @@ export type Database = {
           body?: string
           created_at?: string
           id?: string
+          parent_id?: string | null
           post_id?: string
           status?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "comments_post_id_fkey"
             columns: ["post_id"]
@@ -428,6 +438,39 @@ export type Database = {
           item_type?: Database["public"]["Enums"]["mod_item_type"]
           priority?: number
           status?: Database["public"]["Enums"]["moderation_status"]
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          actor_id: string
+          comment_id: string | null
+          created_at: string
+          id: string
+          post_id: string | null
+          read_at: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          actor_id: string
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          post_id?: string | null
+          read_at?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string
+          comment_id?: string | null
+          created_at?: string
+          id?: string
+          post_id?: string | null
+          read_at?: string | null
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }

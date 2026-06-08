@@ -18,8 +18,10 @@ import { Route as AuthenticatedVerifyRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSecurityRouteImport } from './routes/_authenticated/security'
 import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
+import { Route as AuthenticatedSavedRouteImport } from './routes/_authenticated/saved'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
 import { Route as AuthenticatedInterestsRouteImport } from './routes/_authenticated/interests'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
@@ -29,6 +31,7 @@ import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/c
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedUHandleRouteImport } from './routes/_authenticated/u.$handle'
+import { Route as AuthenticatedPostIdRouteImport } from './routes/_authenticated/post.$id'
 import { Route as AuthenticatedChatIdRouteImport } from './routes/_authenticated/chat.$id'
 import { Route as AuthenticatedAdminVerificationsRouteImport } from './routes/_authenticated/admin/verifications'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
@@ -81,6 +84,11 @@ const AuthenticatedSearchRoute = AuthenticatedSearchRouteImport.update({
   path: '/search',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSavedRoute = AuthenticatedSavedRouteImport.update({
+  id: '/saved',
+  path: '/saved',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -91,6 +99,12 @@ const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedNotificationsRoute =
+  AuthenticatedNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMapRoute = AuthenticatedMapRouteImport.update({
   id: '/map',
   path: '/map',
@@ -134,6 +148,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
 const AuthenticatedUHandleRoute = AuthenticatedUHandleRouteImport.update({
   id: '/u/$handle',
   path: '/u/$handle',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPostIdRoute = AuthenticatedPostIdRouteImport.update({
+  id: '/post/$id',
+  path: '/post/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedChatIdRoute = AuthenticatedChatIdRouteImport.update({
@@ -187,8 +206,10 @@ export interface FileRoutesByFullPath {
   '/home': typeof AuthenticatedHomeRoute
   '/interests': typeof AuthenticatedInterestsRoute
   '/map': typeof AuthenticatedMapRoute
+  '/notifications': typeof AuthenticatedNotificationsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/saved': typeof AuthenticatedSavedRoute
   '/search': typeof AuthenticatedSearchRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -200,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/verifications': typeof AuthenticatedAdminVerificationsRoute
   '/chat/$id': typeof AuthenticatedChatIdRoute
+  '/post/$id': typeof AuthenticatedPostIdRoute
   '/u/$handle': typeof AuthenticatedUHandleRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
@@ -214,8 +236,10 @@ export interface FileRoutesByTo {
   '/home': typeof AuthenticatedHomeRoute
   '/interests': typeof AuthenticatedInterestsRoute
   '/map': typeof AuthenticatedMapRoute
+  '/notifications': typeof AuthenticatedNotificationsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/profile': typeof AuthenticatedProfileRoute
+  '/saved': typeof AuthenticatedSavedRoute
   '/search': typeof AuthenticatedSearchRoute
   '/security': typeof AuthenticatedSecurityRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -227,6 +251,7 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/verifications': typeof AuthenticatedAdminVerificationsRoute
   '/chat/$id': typeof AuthenticatedChatIdRoute
+  '/post/$id': typeof AuthenticatedPostIdRoute
   '/u/$handle': typeof AuthenticatedUHandleRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
@@ -244,8 +269,10 @@ export interface FileRoutesById {
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/interests': typeof AuthenticatedInterestsRoute
   '/_authenticated/map': typeof AuthenticatedMapRoute
+  '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/saved': typeof AuthenticatedSavedRoute
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/security': typeof AuthenticatedSecurityRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -257,6 +284,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/verifications': typeof AuthenticatedAdminVerificationsRoute
   '/_authenticated/chat/$id': typeof AuthenticatedChatIdRoute
+  '/_authenticated/post/$id': typeof AuthenticatedPostIdRoute
   '/_authenticated/u/$handle': typeof AuthenticatedUHandleRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
@@ -274,8 +302,10 @@ export interface FileRouteTypes {
     | '/home'
     | '/interests'
     | '/map'
+    | '/notifications'
     | '/onboarding'
     | '/profile'
+    | '/saved'
     | '/search'
     | '/security'
     | '/settings'
@@ -287,6 +317,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/verifications'
     | '/chat/$id'
+    | '/post/$id'
     | '/u/$handle'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -301,8 +332,10 @@ export interface FileRouteTypes {
     | '/home'
     | '/interests'
     | '/map'
+    | '/notifications'
     | '/onboarding'
     | '/profile'
+    | '/saved'
     | '/search'
     | '/security'
     | '/settings'
@@ -314,6 +347,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/verifications'
     | '/chat/$id'
+    | '/post/$id'
     | '/u/$handle'
     | '/admin'
   id:
@@ -330,8 +364,10 @@ export interface FileRouteTypes {
     | '/_authenticated/home'
     | '/_authenticated/interests'
     | '/_authenticated/map'
+    | '/_authenticated/notifications'
     | '/_authenticated/onboarding'
     | '/_authenticated/profile'
+    | '/_authenticated/saved'
     | '/_authenticated/search'
     | '/_authenticated/security'
     | '/_authenticated/settings'
@@ -343,6 +379,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/verifications'
     | '/_authenticated/chat/$id'
+    | '/_authenticated/post/$id'
     | '/_authenticated/u/$handle'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
@@ -420,6 +457,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSearchRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/saved': {
+      id: '/_authenticated/saved'
+      path: '/saved'
+      fullPath: '/saved'
+      preLoaderRoute: typeof AuthenticatedSavedRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/profile': {
       id: '/_authenticated/profile'
       path: '/profile'
@@ -432,6 +476,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/notifications': {
+      id: '/_authenticated/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AuthenticatedNotificationsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/map': {
@@ -495,6 +546,13 @@ declare module '@tanstack/react-router' {
       path: '/u/$handle'
       fullPath: '/u/$handle'
       preLoaderRoute: typeof AuthenticatedUHandleRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/post/$id': {
+      id: '/_authenticated/post/$id'
+      path: '/post/$id'
+      fullPath: '/post/$id'
+      preLoaderRoute: typeof AuthenticatedPostIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/chat/$id': {
@@ -594,12 +652,15 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedInterestsRoute: typeof AuthenticatedInterestsRoute
   AuthenticatedMapRoute: typeof AuthenticatedMapRoute
+  AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedSavedRoute: typeof AuthenticatedSavedRoute
   AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
   AuthenticatedSecurityRoute: typeof AuthenticatedSecurityRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedVerifyRoute: typeof AuthenticatedVerifyRoute
+  AuthenticatedPostIdRoute: typeof AuthenticatedPostIdRoute
   AuthenticatedUHandleRoute: typeof AuthenticatedUHandleRoute
 }
 
@@ -611,12 +672,15 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedInterestsRoute: AuthenticatedInterestsRoute,
   AuthenticatedMapRoute: AuthenticatedMapRoute,
+  AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedSavedRoute: AuthenticatedSavedRoute,
   AuthenticatedSearchRoute: AuthenticatedSearchRoute,
   AuthenticatedSecurityRoute: AuthenticatedSecurityRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedVerifyRoute: AuthenticatedVerifyRoute,
+  AuthenticatedPostIdRoute: AuthenticatedPostIdRoute,
   AuthenticatedUHandleRoute: AuthenticatedUHandleRoute,
 }
 

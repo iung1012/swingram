@@ -23,6 +23,7 @@ import {
   Pencil,
   Check,
   X,
+  Bookmark,
 } from "lucide-react";
 
 
@@ -318,6 +319,8 @@ function MyProfile() {
       </section>
 
       <section className="mt-5 overflow-hidden rounded-2xl border border-border bg-card">
+        <Row to="/saved" icon={Bookmark} label="Posts salvos" />
+        <Divider />
         <Row to="/settings" icon={Settings} label="Configurações" />
         <Divider />
         <Row to="/couple" icon={Heart} label="Vínculo de casal" />
