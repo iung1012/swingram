@@ -162,7 +162,7 @@ export default function MapView() {
     }, 100);
 
     const ro = new ResizeObserver(() => map.invalidateSize());
-    ro.observe(mapContainer.current);
+    ro.observe(containerEl);
 
     return () => {
       if (moveTimerRef.current) window.clearTimeout(moveTimerRef.current);
@@ -172,7 +172,7 @@ export default function MapView() {
       markersRef.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [me?.lat_snap, me?.lng_snap]);
+  }, [containerEl]);
 
   // self marker + recenter when profile loads
   useEffect(() => {
