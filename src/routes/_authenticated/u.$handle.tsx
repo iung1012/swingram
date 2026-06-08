@@ -7,7 +7,7 @@ import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { ReportDialog } from "@/components/report-dialog";
 import { toast } from "sonner";
-import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2 } from "lucide-react";
+import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2, Heart, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/u/$handle")({
   ssr: false,
@@ -44,25 +44,48 @@ function PublicProfile() {
     },
   });
 
-  const { data: followState } = useQuery({
-    queryKey: ["follow", user?.id, profile?.user_id],
-    enabled: !!user && !!profile && user.id !== profile.user_id,
+  const { data: stats } = useQuery({
+    queryKey: ["profile-stats", profile?.user_id],
+    enabled: !!profile,
     queryFn: async () => {
-      const [mine, counts] = await Promise.all([
-        supabase
-          .from("follows")
-          .select("follower_id")
-          .eq("follower_id", user!.id)
-          .eq("followee_id", profile!.user_id)
-          .maybeSingle(),
+      const [followersRes, postIdsRes] = await Promise.all([
         supabase
           .from("follows")
           .select("follower_id", { count: "exact", head: true })
           .eq("followee_id", profile!.user_id),
+        supabase
+          .from("posts")
+          .select("id")
+          .eq("user_id", profile!.user_id)
+          .is("deleted_at", null),
       ]);
-      return { following: !!mine.data, followers: counts.count ?? 0 };
+      const ids = (postIdsRes.data ?? []).map((p: any) => p.id);
+      let likes = 0;
+      if (ids.length) {
+        const { count } = await supabase
+          .from("likes")
+          .select("post_id", { count: "exact", head: true })
+          .in("post_id", ids);
+        likes = count ?? 0;
+      }
+      return { followers: followersRes.count ?? 0, likes };
     },
   });
+
+  const { data: followState } = useQuery({
+    queryKey: ["follow", user?.id, profile?.user_id],
+    enabled: !!user && !!profile && user.id !== profile.user_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("follows")
+        .select("follower_id")
+        .eq("follower_id", user!.id)
+        .eq("followee_id", profile!.user_id)
+        .maybeSingle();
+      return { following: !!data };
+    },
+  });
+
 
   async function toggleFollow() {
     if (!user || !profile) return;
@@ -81,6 +104,8 @@ function PublicProfile() {
       toast.success("Seguindo");
     }
     qc.invalidateQueries({ queryKey: ["follow", user.id, profile.user_id] });
+    qc.invalidateQueries({ queryKey: ["profile-stats", profile.user_id] });
+
   }
 
   async function shareProfile() {
@@ -192,6 +217,26 @@ function PublicProfile() {
               ))}
             </div>
           )}
+
+          <div className="mt-4 flex items-center gap-5 border-t border-border/60 pt-3 text-[12px]">
+            <div className="flex items-center gap-1.5">
+              <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+              <span className="font-semibold tabular-nums">{(posts ?? []).length}</span>
+              <span className="text-muted-foreground">posts</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+              <span className="font-semibold tabular-nums">{stats?.followers ?? 0}</span>
+              <span className="text-muted-foreground">seguidores</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Heart className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+              <span className="font-semibold tabular-nums">{stats?.likes ?? 0}</span>
+              <span className="text-muted-foreground">curtidas</span>
+            </div>
+          </div>
+
+
 
           {!isMe && (
             <div className="mt-5 grid grid-cols-2 gap-2">
