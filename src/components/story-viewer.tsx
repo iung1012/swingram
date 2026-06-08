@@ -218,7 +218,7 @@ export function StoryViewer({
               aria-label="Excluir story"
               className="rounded-full p-1.5 text-white/90 hover:bg-white/15"
             >
-              <Trash2 className="h-4.5 w-4.5" />
+              <Trash2 className="h-4 w-4" />
             </button>
           )}
           <button
