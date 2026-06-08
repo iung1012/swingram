@@ -92,9 +92,13 @@ export function StoryViewer({
     elapsedRef.current = 0;
   }, [currentIndex]);
 
+  const lastViewedRef = React.useRef<string | null>(null);
   React.useEffect(() => {
+    if (!story?.id) return;
+    if (lastViewedRef.current === story.id) return;
+    lastViewedRef.current = story.id;
     onStoryView?.(story.id);
-  }, [story.id, onStoryView]);
+  }, [story?.id, onStoryView]);
 
   React.useEffect(() => {
     setProgress(0);
