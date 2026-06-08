@@ -147,7 +147,7 @@ export function PostCard({ post, currentUserId, defaultBlur }: { post: PostCardD
       </div>
       {post.caption && (
         <p className="px-3 pb-3 text-sm">
-          <Link to="/u/$handle" params={{ handle: post.author.handle }} className="mr-1.5 font-semibold">@{post.author.handle}</Link>
+          <Link to={"/u/$handle" as never} params={{ handle: post.author.handle } as never} className="mr-1.5 font-semibold">@{post.author.handle}</Link>
           {post.caption}
         </p>
       )}
