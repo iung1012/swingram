@@ -12,6 +12,7 @@ import { detectScamSignals, accountIsTrusted } from "@/lib/anti-scam";
 import { toast } from "sonner";
 import { ArrowLeft, Send } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { SpiralLoaderBlock } from "@/components/spiral-loader";
 
 export const Route = createFileRoute("/_authenticated/chat/$id")({
   ssr: false,
