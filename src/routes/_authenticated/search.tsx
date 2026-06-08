@@ -32,7 +32,9 @@ const RADII = [
   { v: "10", label: "10 km" },
   { v: "25", label: "25 km" },
   { v: "50", label: "50 km" },
+  { v: "100", label: "100 km" },
 ];
+const INTERESTS = ["Casual", "Swing", "Exibicionismo", "Voyeurismo", "Encontros", "Festas", "Fetiches", "BDSM", "Fotografia íntima", "Online"];
 
 function Search() {
   const { user } = useAuth();
