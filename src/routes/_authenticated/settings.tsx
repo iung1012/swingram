@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import {
   MapPin, EyeOff, Eye, Navigation, ShieldCheck, Download, LogOut, Trash2, ChevronRight, ChevronLeft,
 } from "lucide-react";
+import { SpiralLoaderBlock } from "@/components/spiral-loader";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   ssr: false,
