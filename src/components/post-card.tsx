@@ -315,7 +315,50 @@ export function PostCard({
 
       <div className="flex items-center justify-between px-3 py-2.5">
         <div className="flex items-center gap-4">
-          <FireLike liked={liked} count={likes} onToggle={toggleLike} disabled={!currentUserId} />
+          <Dialog open={likesOpen} onOpenChange={setLikesOpen}>
+            <DialogTrigger asChild>
+              <button className="inline-flex items-center gap-1">
+                <FireLike liked={liked} count={likes} onToggle={toggleLike} disabled={!currentUserId} />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[80vh] overflow-hidden p-0">
+              <DialogHeader className="px-5 pt-5 pb-3">
+                <DialogTitle className="text-[15px]">Curtidas</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 overflow-y-auto px-5 pb-5">
+                {(likers ?? []).length === 0 ? (
+                  <p className="text-center text-[12px] text-muted-foreground">
+                    {likesOpen ? "Ninguém curtiu ainda." : "Carregando…"}
+                  </p>
+                ) : (
+                  (likers ?? []).map((p: any) => (
+                    <Link
+                      key={p.user_id}
+                      to={"/u/$handle" as never}
+                      params={{ handle: p.handle } as never}
+                      className="flex items-center gap-2.5"
+                      onClick={() => setLikesOpen(false)}
+                    >
+                      <VerifiedAvatar
+                        bucket="avatars"
+                        path={p.avatar_url}
+                        alt={p.display_name}
+                        verified={p.verified}
+                        className="h-8 w-8"
+                      />
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-1 truncate text-[13px] font-semibold leading-tight">
+                          {p.display_name}
+                          {p.verified && <VerifiedBadge />}
+                        </p>
+                        <p className="truncate text-[11px] text-muted-foreground">@{p.handle}</p>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
           <button
             type="button"
             onClick={() => setShowComments((v) => !v)}
