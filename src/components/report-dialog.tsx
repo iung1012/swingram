@@ -58,6 +58,11 @@ export function ReportDialog({
       setSubmitting(false);
       return;
     }
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    if (!(await checkRateLimit("send_report"))) {
+      setSubmitting(false);
+      return;
+    }
     const priority = reason === "menor" || reason === "ncii" ? 1 : 5;
     const { error } = await supabase.from("reports").insert({
       reporter_id: user.id,

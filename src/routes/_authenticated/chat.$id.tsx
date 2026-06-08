@@ -189,6 +189,11 @@ function ChatRoom() {
 
     setSending(true);
     try {
+      const { checkRateLimit } = await import("@/lib/rate-limit");
+      if (!(await checkRateLimit("send_message"))) {
+        setSending(false);
+        return;
+      }
       let media_path: string | null = null;
       let media_kind: "image" | "video" | null = null;
       if (pending) {

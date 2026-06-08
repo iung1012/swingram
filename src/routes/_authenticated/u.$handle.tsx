@@ -213,6 +213,8 @@ function PublicProfile() {
 
   async function sendInterest() {
     if (!user || !profile) return;
+    const { checkRateLimit } = await import("@/lib/rate-limit");
+    if (!(await checkRateLimit("send_interest"))) return;
     const { error } = await supabase
       .from("interests_sent")
       .insert({ from_user: user.id, to_user: profile.user_id });
