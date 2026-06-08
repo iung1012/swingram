@@ -280,6 +280,8 @@ function CreatePost() {
         hasMedia ? "Enviado. Aguardando aprovação da moderação." : "Publicado",
       );
       clearDraft();
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      qc.invalidateQueries({ queryKey: ["profile-posts"] });
       nav({ to: "/profile" });
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao postar");
