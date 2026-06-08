@@ -69,7 +69,7 @@ function MyProfile() {
     queryFn: async () => {
       const { data } = await supabase
         .from("posts")
-        .select("id, post_media(url, order), moderation_status")
+        .select("id, caption, post_media(url, order, kind), moderation_status")
         .eq("user_id", user!.id)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
