@@ -64,6 +64,7 @@ export function PostCard({
   const [revealed, setRevealed] = useState(!post.nsfw || !defaultBlur);
   const [active, setActive] = useState(0);
   const [showComments, setShowComments] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [likesOpen, setLikesOpen] = useState(false);
