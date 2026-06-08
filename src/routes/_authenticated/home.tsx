@@ -243,8 +243,8 @@ function Feed({
     queryFn: ({ pageParam }) => fetchFeedPage(userId, mode, interests, pageParam),
   });
 
-  const items = useMemo(
-    () => (data?.pages ?? []).flatMap((p) => p.items),
+  const items = useMemo<PostCardData[]>(
+    () => (data?.pages ?? []).flatMap((p: { items: PostCardData[]; nextCursor: string | null }) => p.items),
     [data],
   );
 
