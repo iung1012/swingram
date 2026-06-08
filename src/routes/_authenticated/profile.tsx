@@ -19,7 +19,11 @@ import {
   Sparkles,
   Camera,
   ImagePlus,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
+
 
 
 export const Route = createFileRoute("/_authenticated/profile")({
