@@ -60,9 +60,6 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 import { ensureStorageBuckets } from "@/lib/provisioning.functions";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  beforeLoad: async () => {
-    try { await ensureStorageBuckets(); } catch (e) { console.error("[provisioning] buckets failed", e); }
-  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -83,6 +80,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
@@ -97,6 +95,9 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    ensureStorageBuckets().catch((e) => console.error("[provisioning] buckets failed", e));
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <AgeDisclaimer />
