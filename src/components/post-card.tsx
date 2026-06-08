@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck, Heart, Trash2 } from "lucide-react";
+import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck, Heart, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FireLike } from "./fire-like";
 import { SignedMedia } from "./signed-media";
@@ -14,8 +14,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { renderCaption } from "@/lib/hashtags";
+
 
 type Media = { url: string; order: number; kind?: "image" | "video" };
 type Author = {
