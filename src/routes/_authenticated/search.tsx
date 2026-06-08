@@ -100,9 +100,54 @@ function Search() {
         />
       </label>
 
+      <div className="mt-3">
+        <label className="flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-3 transition-colors focus-within:border-foreground/25">
+          <input
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="Filtrar por cidade"
+            className="h-full flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
+          />
+          {city && (
+            <button
+              type="button"
+              onClick={() => setCity("")}
+              className="text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              limpar
+            </button>
+          )}
+        </label>
+      </div>
+
       <div className="mt-4 space-y-3">
         <ChipGroup label="Tipo" value={type} onChange={setType} options={TYPES} />
         <ChipGroup label="Distância" value={radius} onChange={setRadius} options={RADII} />
+        <div>
+          <p className="mb-1.5 px-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Interesses {selInterests.length > 0 && `(${selInterests.length})`}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {INTERESTS.map((i) => {
+              const active = selInterests.includes(i);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => toggleInterest(i)}
+                  className={cn(
+                    "h-7 rounded-full border px-2.5 text-[12px] font-medium tracking-tight transition-colors",
+                    active
+                      ? "border-foreground/40 bg-secondary text-foreground"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {i}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div className="mt-5 flex items-center justify-between px-1">
