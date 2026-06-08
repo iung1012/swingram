@@ -632,7 +632,7 @@ export function PostCard({
           )}
         </button>
       </div>
-      {caption && (
+      {hasMedia && caption && (
         <p className="whitespace-pre-wrap px-3 pb-3 text-[13px] leading-relaxed text-foreground/90">
           <Link
             to={"/u/$handle" as never}
@@ -644,6 +644,7 @@ export function PostCard({
           {renderCaption(caption)}
         </p>
       )}
+
 
       {/* Edit caption dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
