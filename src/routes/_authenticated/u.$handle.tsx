@@ -196,11 +196,34 @@ function PublicProfile() {
             className="h-20 w-20"
           />
             <div className="min-w-0 flex-1 pt-1">
-              <div className="flex items-center gap-1.5">
-                <h1 className="truncate text-[19px] font-semibold tracking-tight">
+              <div className="flex items-start gap-1.5">
+                <h1 className="min-w-0 flex-1 truncate text-[19px] font-semibold tracking-tight">
                   {profile.display_name}
                 </h1>
                 {profile.verified && <VerifiedBadge />}
+                {!isMe && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        aria-label="Mais opções"
+                        className="-mr-1 -mt-1 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                      >
+                        <MoreVertical className="h-4 w-4" strokeWidth={2.2} />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem onSelect={() => setReportOpen(true)}>
+                        <Flag className="mr-2 h-4 w-4" strokeWidth={2} />
+                        Denunciar
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={blockUser} className="text-destructive focus:text-destructive">
+                        <Ban className="mr-2 h-4 w-4" strokeWidth={2} />
+                        Bloquear
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
               <p className="mt-0.5 text-[13px] text-muted-foreground">@{profile.handle}</p>
               {profile.city && (
@@ -211,6 +234,17 @@ function PublicProfile() {
               )}
             </div>
           </div>
+
+          {!isMe && (
+            <ReportDialog
+              targetType="user"
+              targetId={profile.user_id}
+              trigger={null as any}
+              open={reportOpen}
+              onOpenChange={setReportOpen}
+            />
+          )}
+
 
           {profile.bio && (
             <p className="mt-4 text-[14px] leading-relaxed text-foreground/90">{profile.bio}</p>
