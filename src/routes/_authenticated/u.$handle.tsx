@@ -19,6 +19,7 @@ function PublicProfile() {
   const { handle } = Route.useParams();
   const { user } = useAuth();
   const nav = useNavigate();
+  const qc = useQueryClient();
 
   const { data: profile } = useQuery({
     queryKey: ["profile-handle", handle],
