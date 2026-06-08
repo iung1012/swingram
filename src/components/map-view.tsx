@@ -170,12 +170,12 @@ export default function MapView() {
           <div className="relative overflow-hidden rounded-3xl border border-border shadow-2xl">
             <div ref={mapContainer} style={{ height: 480, width: "100%" }} className="bg-[#0a0a0a]" />
 
-            {/* warm vignette */}
+            {/* warm vignette — subtle so it doesn't black out the map */}
             <div
               className="pointer-events-none absolute inset-0"
               style={{
                 boxShadow:
-                  "inset 0 0 90px oklch(0.06 0 0 / 0.95), inset 0 80px 50px -40px oklch(0.6 0.25 25 / 0.16)",
+                  "inset 0 0 60px oklch(0.06 0 0 / 0.45), inset 0 60px 40px -30px oklch(0.6 0.25 25 / 0.12)",
               }}
             />
 
