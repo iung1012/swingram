@@ -189,8 +189,8 @@ export default function MapView() {
         });
         const marker = L.marker([r.lat_snap, r.lng_snap], { icon }).addTo(map);
         marker.on("click", () => {
-          const km = me?.lat_snap && me?.lng_snap
-            ? distanceKm({ lat: me.lat_snap, lng: me.lng_snap }, { lat: r.lat_snap, lng: r.lng_snap })
+          const km = selfPos
+            ? distanceKm(selfPos, { lat: r.lat_snap, lng: r.lng_snap })
             : 0;
           setSelected({ ...r, km });
           map.panTo([r.lat_snap, r.lng_snap]);
