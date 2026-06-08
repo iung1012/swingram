@@ -2,14 +2,15 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Search, Map, MessageCircle, User, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const items = [
+type NavItem = { to: string; icon: typeof Home; label: string; primary?: boolean };
+const items: NavItem[] = [
   { to: "/home", icon: Home, label: "Início" },
   { to: "/search", icon: Search, label: "Buscar" },
   { to: "/create", icon: Plus, label: "Postar", primary: true },
   { to: "/map", icon: Map, label: "Mapa" },
   { to: "/chat", icon: MessageCircle, label: "Chat" },
   { to: "/profile", icon: User, label: "Perfil" },
-] as const;
+];
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
