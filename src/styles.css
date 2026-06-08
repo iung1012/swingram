@@ -119,13 +119,9 @@
   .brasa-glow { animation: brasa-glow 3s ease-in-out infinite; }
 }
 
-/* Dark grayscale map tiles — strip color/labels-ish look */
-.leaflet-container { background: oklch(0.08 0 0) !important; }
-.leaflet-tile {
-  filter: grayscale(1) brightness(0.55) contrast(1.15);
-}
-.leaflet-control-attribution,
-.leaflet-control-zoom { display: none !important; }
+/* Dark map tiles — keep natural colors from carto dark basemap */
+.leaflet-container { background: oklch(0.08 0 0) !important; font-family: inherit; }
+.leaflet-control-attribution { display: none !important; }
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
   background: oklch(0.13 0 0) !important;
   color: oklch(0.98 0 0) !important;
