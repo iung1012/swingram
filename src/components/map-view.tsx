@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
 import { distanceKm, snapAndFuzz } from "@/lib/geo";
 import { Card } from "@/components/ui/card";
+import { VerifiedAvatar } from "@/components/verified-avatar";
+import { VerifiedBadge } from "@/components/verified-badge";
 import { toast } from "sonner";
 
 type NearbyProfile = {
