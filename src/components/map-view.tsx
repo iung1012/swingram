@@ -6,8 +6,9 @@ import { Plus, Minus, Locate, Maximize2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
-import { distanceKm } from "@/lib/geo";
+import { distanceKm, snapAndFuzz } from "@/lib/geo";
 import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
 
 type NearbyProfile = {
   user_id: string;
@@ -71,9 +72,20 @@ export default function MapView() {
   const { user } = useAuth();
   const { data: me } = useMyProfile(user?.id);
 
+  // Live snapped position from the device geolocation API. Falls back to the
+  // profile's stored lat_snap/lng_snap until the user grants permission.
+  const [livePos, setLivePos] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+
+  const selfPos = useMemo<{ lat: number; lng: number } | null>(() => {
+    if (livePos) return livePos;
+    if (me?.lat_snap && me?.lng_snap) return { lat: me.lat_snap, lng: me.lng_snap };
+    return null;
+  }, [livePos, me?.lat_snap, me?.lng_snap]);
+
   const center = useMemo<[number, number]>(
-    () => (me?.lat_snap && me?.lng_snap ? [me.lat_snap, me.lng_snap] : [-14.235, -51.9253]),
-    [me?.lat_snap, me?.lng_snap]
+    () => (selfPos ? [selfPos.lat, selfPos.lng] : [-14.235, -51.9253]),
+    [selfPos]
   );
 
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
@@ -85,6 +97,47 @@ export default function MapView() {
   const profilesRef = useRef<Map<string, NearbyProfile>>(new Map());
   const [selected, setSelected] = useState<SelectedProfile | null>(null);
   const [visibleCount, setVisibleCount] = useState(0);
+
+  // Request current device location, snap it and persist to the profile.
+  const requestLocation = (opts: { silent?: boolean } = {}) => {
+    if (!user?.id) return;
+    if (!("geolocation" in navigator)) {
+      if (!opts.silent) toast.error("Geolocalização não suportada neste dispositivo");
+      return;
+    }
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const snapped = snapAndFuzz(user.id, pos.coords.latitude, pos.coords.longitude);
+        const next = { lat: snapped.lat_snap, lng: snapped.lng_snap };
+        setLivePos(next);
+        setGeoLoading(false);
+        try {
+          await supabase
+            .from("profiles")
+            .update({ lat_snap: next.lat, lng_snap: next.lng })
+            .eq("user_id", user.id);
+        } catch (e) {
+          console.warn("[MapView] failed to persist location", e);
+        }
+      },
+      (err) => {
+        setGeoLoading(false);
+        console.warn("[MapView] geolocation error", err);
+        if (!opts.silent) toast.error("Não foi possível obter sua localização");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  };
+
+  // Try to get a fresh position as soon as we know who the user is.
+  useEffect(() => {
+    if (!user?.id) return;
+    requestLocation({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+
 
   // init map
   useEffect(() => {
@@ -136,8 +189,8 @@ export default function MapView() {
         });
         const marker = L.marker([r.lat_snap, r.lng_snap], { icon }).addTo(map);
         marker.on("click", () => {
-          const km = me?.lat_snap && me?.lng_snap
-            ? distanceKm({ lat: me.lat_snap, lng: me.lng_snap }, { lat: r.lat_snap, lng: r.lng_snap })
+          const km = selfPos
+            ? distanceKm(selfPos, { lat: r.lat_snap, lng: r.lng_snap })
             : 0;
           setSelected({ ...r, km });
           map.panTo([r.lat_snap, r.lng_snap]);
@@ -174,10 +227,10 @@ export default function MapView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerEl]);
 
-  // self marker + recenter when profile loads
+  // self marker + recenter whenever our position changes
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !me?.lat_snap || !me?.lng_snap) return;
+    if (!map || !selfPos) return;
 
     const icon = L.divIcon({
       className: "",
@@ -187,13 +240,12 @@ export default function MapView() {
     });
 
     if (!selfMarkerRef.current) {
-      selfMarkerRef.current = L.marker([me.lat_snap, me.lng_snap], { icon }).addTo(map);
+      selfMarkerRef.current = L.marker([selfPos.lat, selfPos.lng], { icon }).addTo(map);
+      map.setView([selfPos.lat, selfPos.lng], 12);
     } else {
-      selfMarkerRef.current.setLatLng([me.lat_snap, me.lng_snap]);
+      selfMarkerRef.current.setLatLng([selfPos.lat, selfPos.lng]);
     }
-
-    map.setView([me.lat_snap, me.lng_snap], 12);
-  }, [me?.lat_snap, me?.lng_snap]);
+  }, [selfPos?.lat, selfPos?.lng]);
 
   const zoom = (delta: number) => {
     const map = mapRef.current;
@@ -201,15 +253,16 @@ export default function MapView() {
     map.setZoom(map.getZoom() + delta);
   };
   const recenter = () => {
-    if (me?.lat_snap && me?.lng_snap) {
-      mapRef.current?.setView([me.lat_snap, me.lng_snap], 13);
+    requestLocation();
+    if (selfPos) {
+      mapRef.current?.setView([selfPos.lat, selfPos.lng], 13);
     }
   };
   const fit = () => {
     const map = mapRef.current;
     if (!map) return;
     const pts: L.LatLngTuple[] = [];
-    if (me?.lat_snap && me?.lng_snap) pts.push([me.lat_snap, me.lng_snap]);
+    if (selfPos) pts.push([selfPos.lat, selfPos.lng]);
     profilesRef.current.forEach((p) => pts.push([p.lat_snap, p.lng_snap]));
     if (pts.length < 2) return;
     map.fitBounds(L.latLngBounds(pts), { padding: [60, 60], maxZoom: 13 });
@@ -225,12 +278,22 @@ export default function MapView() {
         <span className="text-xs text-muted-foreground tabular-nums">{visibleCount} na região</span>
       </div>
 
-      {!me?.lat_snap ? (
+      {!selfPos ? (
         <Card className="mb-4 p-5 text-sm">
           <p className="font-semibold">Compartilhe sua localização</p>
           <p className="mt-1 text-muted-foreground">
-            Posição arredondada para ~500m com offset aleatório. Habilite em{" "}
-            <Link to="/settings" className="text-primary underline">Configurações</Link>.
+            Usamos sua posição atual arredondada a ~500m com offset aleatório. Ninguém vê o ponto exato.
+          </p>
+          <button
+            type="button"
+            onClick={() => requestLocation()}
+            disabled={geoLoading}
+            className="mt-3 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {geoLoading ? "Obtendo..." : "Usar minha localização atual"}
+          </button>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Você também pode ajustar em <Link to="/settings" className="text-primary underline">Configurações</Link>.
           </p>
         </Card>
       ) : (
