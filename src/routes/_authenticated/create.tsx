@@ -21,7 +21,11 @@ import {
   Sparkles,
   Upload,
   Send,
+  Trash2,
 } from "lucide-react";
+
+const DRAFT_KEY_PREFIX = "brasa:create-draft:";
+type Draft = { caption: string; nsfw: boolean; savedAt: number };
 
 const MAX_IMAGE_MB = 8;
 const MAX_VIDEO_MB = 100;
