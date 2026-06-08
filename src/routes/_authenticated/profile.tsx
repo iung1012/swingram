@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile, useIsStaff } from "@/hooks/use-profile";
+import { SignedImage } from "@/components/signed-image";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import {
