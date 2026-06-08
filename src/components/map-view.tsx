@@ -6,8 +6,9 @@ import { Plus, Minus, Locate, Maximize2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
-import { distanceKm } from "@/lib/geo";
+import { distanceKm, snapAndFuzz } from "@/lib/geo";
 import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
 
 type NearbyProfile = {
   user_id: string;
