@@ -20,6 +20,7 @@ import {
   GripVertical,
   Sparkles,
   Upload,
+  Send,
 } from "lucide-react";
 
 const MAX_IMAGE_MB = 8;
