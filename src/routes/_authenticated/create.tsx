@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { uploadToBucket } from "@/lib/storage";
@@ -52,6 +53,7 @@ export const Route = createFileRoute("/_authenticated/create")({
 
 function CreatePost() {
   const nav = useNavigate();
+  const qc = useQueryClient();
   const { user } = useAuth();
   const [files, setFiles] = useState<Picked[]>([]);
   const [active, setActive] = useState(0);
@@ -278,6 +280,8 @@ function CreatePost() {
         hasMedia ? "Enviado. Aguardando aprovação da moderação." : "Publicado",
       );
       clearDraft();
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      qc.invalidateQueries({ queryKey: ["profile-posts"] });
       nav({ to: "/profile" });
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao postar");
