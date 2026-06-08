@@ -21,6 +21,7 @@ import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/ma
 import { Route as AuthenticatedInterestsRouteImport } from './routes/_authenticated/interests'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedCreateRouteImport } from './routes/_authenticated/create'
+import { Route as AuthenticatedCoupleRouteImport } from './routes/_authenticated/couple'
 import { Route as AuthenticatedChatRouteImport } from './routes/_authenticated/chat'
 import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
@@ -31,6 +32,7 @@ import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminReportsRouteImport } from './routes/_authenticated/admin/reports'
 import { Route as AuthenticatedAdminPostsRouteImport } from './routes/_authenticated/admin/posts'
 import { Route as AuthenticatedAdminBannersRouteImport } from './routes/_authenticated/admin/banners'
+import { Route as AuthenticatedAdminAuditRouteImport } from './routes/_authenticated/admin/audit'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -91,6 +93,11 @@ const AuthenticatedCreateRoute = AuthenticatedCreateRouteImport.update({
   path: '/create',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCoupleRoute = AuthenticatedCoupleRouteImport.update({
+  id: '/couple',
+  path: '/couple',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedChatRoute = AuthenticatedChatRouteImport.update({
   id: '/chat',
   path: '/chat',
@@ -144,12 +151,18 @@ const AuthenticatedAdminBannersRoute =
     path: '/banners',
     getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
+const AuthenticatedAdminAuditRoute = AuthenticatedAdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/chat': typeof AuthenticatedChatRouteWithChildren
+  '/couple': typeof AuthenticatedCoupleRoute
   '/create': typeof AuthenticatedCreateRoute
   '/home': typeof AuthenticatedHomeRoute
   '/interests': typeof AuthenticatedInterestsRoute
@@ -159,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/verify': typeof AuthenticatedVerifyRoute
+  '/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/admin/banners': typeof AuthenticatedAdminBannersRoute
   '/admin/posts': typeof AuthenticatedAdminPostsRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
@@ -172,6 +186,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/chat': typeof AuthenticatedChatRouteWithChildren
+  '/couple': typeof AuthenticatedCoupleRoute
   '/create': typeof AuthenticatedCreateRoute
   '/home': typeof AuthenticatedHomeRoute
   '/interests': typeof AuthenticatedInterestsRoute
@@ -181,6 +196,7 @@ export interface FileRoutesByTo {
   '/search': typeof AuthenticatedSearchRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/verify': typeof AuthenticatedVerifyRoute
+  '/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/admin/banners': typeof AuthenticatedAdminBannersRoute
   '/admin/posts': typeof AuthenticatedAdminPostsRoute
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
@@ -197,6 +213,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/chat': typeof AuthenticatedChatRouteWithChildren
+  '/_authenticated/couple': typeof AuthenticatedCoupleRoute
   '/_authenticated/create': typeof AuthenticatedCreateRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/interests': typeof AuthenticatedInterestsRoute
@@ -206,6 +223,7 @@ export interface FileRoutesById {
   '/_authenticated/search': typeof AuthenticatedSearchRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/verify': typeof AuthenticatedVerifyRoute
+  '/_authenticated/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/_authenticated/admin/banners': typeof AuthenticatedAdminBannersRoute
   '/_authenticated/admin/posts': typeof AuthenticatedAdminPostsRoute
   '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
@@ -222,6 +240,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin'
     | '/chat'
+    | '/couple'
     | '/create'
     | '/home'
     | '/interests'
@@ -231,6 +250,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/verify'
+    | '/admin/audit'
     | '/admin/banners'
     | '/admin/posts'
     | '/admin/reports'
@@ -244,6 +264,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/chat'
+    | '/couple'
     | '/create'
     | '/home'
     | '/interests'
@@ -253,6 +274,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/verify'
+    | '/admin/audit'
     | '/admin/banners'
     | '/admin/posts'
     | '/admin/reports'
@@ -268,6 +290,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/admin'
     | '/_authenticated/chat'
+    | '/_authenticated/couple'
     | '/_authenticated/create'
     | '/_authenticated/home'
     | '/_authenticated/interests'
@@ -277,6 +300,7 @@ export interface FileRouteTypes {
     | '/_authenticated/search'
     | '/_authenticated/settings'
     | '/_authenticated/verify'
+    | '/_authenticated/admin/audit'
     | '/_authenticated/admin/banners'
     | '/_authenticated/admin/posts'
     | '/_authenticated/admin/reports'
@@ -379,6 +403,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCreateRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/couple': {
+      id: '/_authenticated/couple'
+      path: '/couple'
+      fullPath: '/couple'
+      preLoaderRoute: typeof AuthenticatedCoupleRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/chat': {
       id: '/_authenticated/chat'
       path: '/chat'
@@ -449,10 +480,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminBannersRouteImport
       parentRoute: typeof AuthenticatedAdminRouteRoute
     }
+    '/_authenticated/admin/audit': {
+      id: '/_authenticated/admin/audit'
+      path: '/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AuthenticatedAdminAuditRouteImport
+      parentRoute: typeof AuthenticatedAdminRouteRoute
+    }
   }
 }
 
 interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminAuditRoute: typeof AuthenticatedAdminAuditRoute
   AuthenticatedAdminBannersRoute: typeof AuthenticatedAdminBannersRoute
   AuthenticatedAdminPostsRoute: typeof AuthenticatedAdminPostsRoute
   AuthenticatedAdminReportsRoute: typeof AuthenticatedAdminReportsRoute
@@ -463,6 +502,7 @@ interface AuthenticatedAdminRouteRouteChildren {
 
 const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
   {
+    AuthenticatedAdminAuditRoute: AuthenticatedAdminAuditRoute,
     AuthenticatedAdminBannersRoute: AuthenticatedAdminBannersRoute,
     AuthenticatedAdminPostsRoute: AuthenticatedAdminPostsRoute,
     AuthenticatedAdminReportsRoute: AuthenticatedAdminReportsRoute,
@@ -490,6 +530,7 @@ const AuthenticatedChatRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRouteWithChildren
   AuthenticatedChatRoute: typeof AuthenticatedChatRouteWithChildren
+  AuthenticatedCoupleRoute: typeof AuthenticatedCoupleRoute
   AuthenticatedCreateRoute: typeof AuthenticatedCreateRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedInterestsRoute: typeof AuthenticatedInterestsRoute
@@ -505,6 +546,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRouteWithChildren,
   AuthenticatedChatRoute: AuthenticatedChatRouteWithChildren,
+  AuthenticatedCoupleRoute: AuthenticatedCoupleRoute,
   AuthenticatedCreateRoute: AuthenticatedCreateRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedInterestsRoute: AuthenticatedInterestsRoute,
@@ -528,13 +570,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
