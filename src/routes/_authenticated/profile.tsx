@@ -455,7 +455,7 @@ function MyProfile() {
             <p className="text-[13px] text-muted-foreground">Nenhuma foto ou vídeo publicado.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5">
             {posts
               .filter((p) => p.media.length > 0)
               .map((p) => {
