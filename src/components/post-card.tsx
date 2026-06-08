@@ -61,6 +61,7 @@ export function PostCard({
   const [liked, setLiked] = useState(post.liked_by_me);
   const [likes, setLikes] = useState(post.likes_count);
   const [saved, setSaved] = useState(post.saved_by_me);
+  const [commentsCount, setCommentsCount] = useState(post.comments_count);
   const [revealed, setRevealed] = useState(!post.nsfw || !defaultBlur);
   const [active, setActive] = useState(0);
   const [showComments, setShowComments] = useState(false);
@@ -73,6 +74,7 @@ export function PostCard({
 
   useEffect(() => setRevealed(!post.nsfw || !defaultBlur), [post.nsfw, defaultBlur]);
   useEffect(() => { setLiked(post.liked_by_me); setLikes(post.likes_count); }, [post.liked_by_me, post.likes_count]);
+  useEffect(() => { setCommentsCount(post.comments_count); }, [post.comments_count]);
 
   const COMMENTS_PAGE_SIZE = 15;
   const {
