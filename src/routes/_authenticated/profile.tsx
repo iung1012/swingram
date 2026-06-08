@@ -46,6 +46,8 @@ function MyProfile() {
   const [editingBio, setEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState("");
   const [savingBio, setSavingBio] = useState(false);
+  const [tab, setTab] = useState<"posts" | "photos">("posts");
+
 
   async function saveBio() {
     if (!user) return;
