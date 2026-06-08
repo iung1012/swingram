@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FireLike } from "./fire-like";
-import { SignedImage } from "./signed-image";
+import { SignedMedia } from "./signed-media";
 import { VerifiedAvatar } from "./verified-avatar";
 import { VerifiedBadge } from "./verified-badge";
 import { ReportDialog } from "./report-dialog";
@@ -14,8 +14,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { renderCaption } from "@/lib/hashtags";
 
-type Media = { url: string; order: number };
+type Media = { url: string; order: number; kind?: "image" | "video" };
 type Author = {
   handle: string;
   display_name: string;
@@ -50,6 +51,8 @@ export function PostCard({
   const [saved, setSaved] = useState(post.saved_by_me);
   const [revealed, setRevealed] = useState(!post.nsfw || !defaultBlur);
   const [active, setActive] = useState(0);
+  const hasMedia = (post.media ?? []).length > 0;
+  const current = post.media[active];
 
   useEffect(() => setRevealed(!post.nsfw || !defaultBlur), [post.nsfw, defaultBlur]);
 
@@ -136,40 +139,46 @@ export function PostCard({
         </DropdownMenu>
       </header>
 
-      <div className="relative aspect-square w-full overflow-hidden border-y border-border bg-black">
-        <button
-          type="button"
-          onClick={() => !revealed && setRevealed(true)}
-          className="block h-full w-full"
-          aria-label={revealed ? "Foto" : "Conteúdo sensível — toque para ver"}
-        >
-          <SignedImage
-            bucket="posts"
-            path={post.media[active]?.url}
-            alt=""
-            className={`h-full w-full object-cover ${!revealed ? "nsfw-blur" : ""}`}
-          />
-          {!revealed && (
-            <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[13px] font-medium tracking-tight text-white">
-              Conteúdo sensível — toque para ver
-            </span>
+      {hasMedia && (
+        <div className="relative aspect-square w-full overflow-hidden border-y border-border bg-black">
+          <button
+            type="button"
+            onClick={() => !revealed && setRevealed(true)}
+            className="block h-full w-full"
+            aria-label={revealed ? "Mídia" : "Conteúdo sensível — toque para ver"}
+          >
+            <SignedMedia
+              bucket="posts"
+              path={current?.url}
+              kind={current?.kind ?? "image"}
+              alt=""
+              controls={current?.kind === "video" && revealed}
+              muted
+              playsInline
+              className={`h-full w-full object-cover ${!revealed ? "nsfw-blur" : ""}`}
+            />
+            {!revealed && (
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[13px] font-medium tracking-tight text-white">
+                Conteúdo sensível — toque para ver
+              </span>
+            )}
+          </button>
+          {post.media.length > 1 && (
+            <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-white/10 bg-black/40 px-2 py-1 backdrop-blur">
+              {post.media.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActive(i)}
+                  aria-label={`Item ${i + 1}`}
+                  className={`h-1 rounded-full transition-all ${
+                    i === active ? "w-5 bg-white" : "w-1 bg-white/40"
+                  }`}
+                />
+              ))}
+            </div>
           )}
-        </button>
-        {post.media.length > 1 && (
-          <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-white/10 bg-black/40 px-2 py-1 backdrop-blur">
-            {post.media.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setActive(i)}
-                aria-label={`Foto ${i + 1}`}
-                className={`h-1 rounded-full transition-all ${
-                  i === active ? "w-5 bg-white" : "w-1 bg-white/40"
-                }`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between px-3 py-2.5">
         <div className="flex items-center gap-4">
@@ -192,7 +201,7 @@ export function PostCard({
         </button>
       </div>
       {post.caption && (
-        <p className="px-3 pb-3 text-[13px] leading-relaxed text-foreground/90">
+        <p className="whitespace-pre-wrap px-3 pb-3 text-[13px] leading-relaxed text-foreground/90">
           <Link
             to={"/u/$handle" as never}
             params={{ handle: post.author.handle } as never}
@@ -200,7 +209,7 @@ export function PostCard({
           >
             @{post.author.handle}
           </Link>
-          {post.caption}
+          {renderCaption(post.caption)}
         </p>
       )}
     </article>
