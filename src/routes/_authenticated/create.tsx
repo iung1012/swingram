@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,13 +8,36 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { X, ImagePlus, Eye, ShieldCheck, Play, Hash } from "lucide-react";
+import {
+  X,
+  ImagePlus,
+  Eye,
+  ShieldCheck,
+  Play,
+  Hash,
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+  Sparkles,
+  Upload,
+} from "lucide-react";
 
 const MAX_IMAGE_MB = 8;
 const MAX_VIDEO_MB = 100;
 const MAX_FILES = 10;
+const MAX_CAPTION = 2000;
+const SUGGESTED_TAGS = [
+  "encontros",
+  "casal",
+  "sp",
+  "festa",
+  "viagem",
+  "lifestyle",
+  "swing",
+  "club",
+];
 
-type Picked = { file: File; kind: "image" | "video"; preview: string };
+type Picked = { id: string; file: File; kind: "image" | "video"; preview: string };
 
 export const Route = createFileRoute("/_authenticated/create")({
   ssr: false,
@@ -26,18 +49,38 @@ function CreatePost() {
   const nav = useNavigate();
   const { user } = useAuth();
   const [files, setFiles] = useState<Picked[]>([]);
+  const [active, setActive] = useState(0);
   const [caption, setCaption] = useState("");
   const [nsfw, setNsfw] = useState(true);
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const dragIndex = useRef<number | null>(null);
 
   const tags = useMemo(() => extractHashtags(caption), [caption]);
   const hasMedia = files.length > 0;
+  const remaining = MAX_FILES - files.length;
+  const pct = Math.min(100, Math.round((caption.length / MAX_CAPTION) * 100));
 
-  function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
-    const list = Array.from(e.target.files ?? []).slice(0, MAX_FILES);
+  useEffect(() => {
+    return () => {
+      files.forEach((f) => URL.revokeObjectURL(f.preview));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (active >= files.length) setActive(Math.max(0, files.length - 1));
+  }, [files.length, active]);
+
+  function addFileList(list: FileList | File[]) {
+    const arr = Array.from(list).slice(0, remaining);
+    if (arr.length === 0) return;
     const next: Picked[] = [];
-    for (const f of list) {
+    for (const f of arr) {
       const isImage = f.type.startsWith("image/");
       const isVideo = f.type.startsWith("video/");
       if (!isImage && !isVideo) {
@@ -46,16 +89,21 @@ function CreatePost() {
       }
       const limit = isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB;
       if (f.size > limit * 1024 * 1024) {
-        toast.error(`${f.name}: arquivo maior que ${limit}MB`);
+        toast.error(`${f.name}: maior que ${limit}MB`);
         continue;
       }
       next.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         file: f,
         kind: isVideo ? "video" : "image",
         preview: URL.createObjectURL(f),
       });
     }
-    setFiles(next);
+    setFiles((s) => [...s, ...next]);
+  }
+
+  function handleInput(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) addFileList(e.target.files);
     e.target.value = "";
   }
 
@@ -64,6 +112,44 @@ function CreatePost() {
       const item = s[i];
       if (item) URL.revokeObjectURL(item.preview);
       return s.filter((_, idx) => idx !== i);
+    });
+  }
+
+  function reorder(from: number, to: number) {
+    if (from === to) return;
+    setFiles((s) => {
+      const copy = s.slice();
+      const [moved] = copy.splice(from, 1);
+      copy.splice(to, 0, moved);
+      return copy;
+    });
+    setActive(to);
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    if (e.dataTransfer.files?.length) addFileList(e.dataTransfer.files);
+  }
+
+  function insertTag(tag: string) {
+    const ta = textareaRef.current;
+    const insert = ` #${tag}`;
+    if (!ta) {
+      setCaption((c) => (c + insert).slice(0, MAX_CAPTION));
+      return;
+    }
+    const start = ta.selectionStart ?? caption.length;
+    const end = ta.selectionEnd ?? caption.length;
+    const next = (caption.slice(0, start) + insert + caption.slice(end)).slice(
+      0,
+      MAX_CAPTION,
+    );
+    setCaption(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = start + insert.length;
+      ta.setSelectionRange(pos, pos);
     });
   }
 
@@ -76,6 +162,7 @@ function CreatePost() {
       return toast.error("Confirme a declaração de idade e consentimento");
     }
     setSubmitting(true);
+    setProgress(0);
     try {
       const { data: post, error } = await supabase
         .from("posts")
@@ -90,12 +177,18 @@ function CreatePost() {
       if (error) throw error;
 
       if (hasMedia) {
-        const uploads = await Promise.all(
-          files.map(async (p, idx) => {
-            const path = await uploadToBucket("posts", user.id, p.file, post.id);
-            return { post_id: post.id, url: path, order: idx, kind: p.kind };
-          }),
-        );
+        const uploads: Array<{
+          post_id: string;
+          url: string;
+          order: number;
+          kind: "image" | "video";
+        }> = [];
+        for (let i = 0; i < files.length; i++) {
+          const p = files[i];
+          const path = await uploadToBucket("posts", user.id, p.file, post.id);
+          uploads.push({ post_id: post.id, url: path, order: i, kind: p.kind });
+          setProgress(Math.round(((i + 1) / files.length) * 100));
+        }
         await supabase.from("post_media").insert(uploads);
 
         await supabase.from("age_consent_records").insert({
@@ -108,9 +201,7 @@ function CreatePost() {
       }
 
       toast.success(
-        hasMedia
-          ? "Enviado. Aguardando aprovação da moderação."
-          : "Publicado",
+        hasMedia ? "Enviado. Aguardando aprovação da moderação." : "Publicado",
       );
       nav({ to: "/profile" });
     } catch (e: any) {
@@ -120,113 +211,289 @@ function CreatePost() {
     }
   }
 
+  const current = files[active];
+  const captionParts = useMemo(() => renderCaption(caption), [caption]);
+
   return (
-    <div className="mx-auto max-w-2xl px-4 pb-12 pt-6">
-      <header className="mb-5">
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-          Publicação
-        </p>
-        <h1 className="mt-1 text-[26px] font-semibold tracking-tight">Novo post</h1>
+    <div className="mx-auto max-w-2xl px-4 pb-32 pt-6">
+      <header className="mb-5 flex items-end justify-between">
+        <div>
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Publicação
+          </p>
+          <h1 className="mt-1 text-[26px] font-semibold tracking-tight">
+            Novo post
+          </h1>
+        </div>
+        <span className="hidden text-[11px] text-muted-foreground sm:inline">
+          {files.length}/{MAX_FILES} mídias
+        </span>
       </header>
 
-      <section className="overflow-hidden rounded-2xl border border-border bg-card">
+      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        {/* MEDIA AREA */}
         <div className="border-b border-border p-4">
-          <label className="block">
-            <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-              Fotos ou vídeos · opcional · até {MAX_FILES}
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              Fotos ou vídeos · opcional
             </span>
-            <div className="flex h-28 cursor-pointer items-center justify-center rounded-xl border border-dashed border-border bg-secondary/40 transition-colors hover:bg-secondary/60">
-              <input
-                type="file"
-                accept="image/*,video/*"
-                multiple
-                onChange={handleFiles}
-                className="sr-only"
-              />
-              <span className="inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground">
-                <ImagePlus className="h-4 w-4" strokeWidth={2} />
-                Escolher fotos ou vídeos
+            {hasMedia && (
+              <button
+                onClick={() => inputRef.current?.click()}
+                disabled={remaining <= 0}
+                className="text-[11px] font-medium text-foreground/80 underline-offset-2 hover:underline disabled:opacity-40"
+              >
+                + Adicionar ({remaining} restantes)
+              </button>
+            )}
+          </div>
+
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            onChange={handleInput}
+            className="sr-only"
+          />
+
+          {!hasMedia ? (
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={onDrop}
+              onClick={() => inputRef.current?.click()}
+              className={`flex h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed transition ${
+                dragOver
+                  ? "border-primary/60 bg-primary/5"
+                  : "border-border bg-secondary/40 hover:bg-secondary/60"
+              }`}
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
+                <Upload className="h-4 w-4 text-foreground/70" strokeWidth={2} />
+              </span>
+              <span className="text-[14px] font-medium text-foreground/90">
+                Arraste fotos/vídeos aqui
+              </span>
+              <span className="text-[12px] text-muted-foreground">
+                ou clique para escolher · até {MAX_FILES} arquivos
               </span>
             </div>
-          </label>
-          {files.length > 0 && (
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              {files.map((p, i) => (
-                <div
-                  key={i}
-                  className="relative overflow-hidden rounded-md border border-border bg-black"
-                >
-                  {p.kind === "video" ? (
-                    <>
-                      <video
-                        src={p.preview}
-                        className="aspect-square w-full object-cover"
-                        muted
-                        playsInline
-                      />
-                      <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <Play className="h-6 w-6 text-white drop-shadow" fill="white" />
-                      </span>
-                    </>
-                  ) : (
-                    <img
-                      src={p.preview}
-                      alt=""
-                      className="aspect-square w-full object-cover"
+          ) : (
+            <div>
+              {/* Carousel main */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={onDrop}
+                className={`relative overflow-hidden rounded-xl border bg-black ${
+                  dragOver ? "border-primary/60" : "border-border"
+                }`}
+              >
+                <div className="relative aspect-square w-full">
+                  {current?.kind === "video" ? (
+                    <video
+                      key={current.id}
+                      src={current.preview}
+                      className="h-full w-full object-contain"
+                      controls
+                      playsInline
                     />
-                  )}
-                  <button
-                    onClick={() => removeAt(i)}
-                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white backdrop-blur"
-                    aria-label="Remover"
-                  >
-                    <X className="h-3 w-3" strokeWidth={2.4} />
-                  </button>
+                  ) : current ? (
+                    <img
+                      src={current.preview}
+                      alt=""
+                      className="h-full w-full object-contain"
+                    />
+                  ) : null}
                 </div>
-              ))}
+
+                {files.length > 1 && (
+                  <>
+                    <button
+                      onClick={() =>
+                        setActive((a) => (a - 1 + files.length) % files.length)
+                      }
+                      className="absolute left-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur"
+                      aria-label="Anterior"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setActive((a) => (a + 1) % files.length)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur"
+                      aria-label="Próximo"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
+
+                <div className="absolute left-2 top-2 rounded-md bg-black/60 px-2 py-0.5 text-[10.5px] font-medium uppercase tracking-wider text-white backdrop-blur">
+                  {current?.kind === "video" ? "Vídeo" : "Foto"} · {active + 1}/
+                  {files.length}
+                </div>
+
+                <button
+                  onClick={() => removeAt(active)}
+                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white backdrop-blur"
+                  aria-label="Remover"
+                >
+                  <X className="h-3.5 w-3.5" strokeWidth={2.4} />
+                </button>
+              </div>
+
+              {/* Thumbs */}
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                {files.map((p, i) => (
+                  <button
+                    key={p.id}
+                    draggable
+                    onDragStart={() => (dragIndex.current = i)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const from = dragIndex.current;
+                      if (from != null) reorder(from, i);
+                      dragIndex.current = null;
+                    }}
+                    onClick={() => setActive(i)}
+                    className={`group relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-black transition ${
+                      i === active
+                        ? "border-primary ring-2 ring-primary/40"
+                        : "border-border opacity-70 hover:opacity-100"
+                    }`}
+                    aria-label={`Mídia ${i + 1}`}
+                  >
+                    {p.kind === "video" ? (
+                      <>
+                        <video
+                          src={p.preview}
+                          className="h-full w-full object-cover"
+                          muted
+                          playsInline
+                        />
+                        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                          <Play
+                            className="h-4 w-4 text-white drop-shadow"
+                            fill="white"
+                          />
+                        </span>
+                      </>
+                    ) : (
+                      <img
+                        src={p.preview}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                    <span className="absolute left-1 top-1 hidden h-4 w-4 items-center justify-center rounded bg-black/60 text-white group-hover:flex">
+                      <GripVertical className="h-3 w-3" />
+                    </span>
+                  </button>
+                ))}
+                {remaining > 0 && (
+                  <button
+                    onClick={() => inputRef.current?.click()}
+                    className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-secondary/40 text-muted-foreground hover:bg-secondary/60"
+                    aria-label="Adicionar mídia"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
           )}
+
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Imagens até {MAX_IMAGE_MB}MB · vídeos até {MAX_VIDEO_MB}MB. Sem mídia? Pode postar só texto.
+            Imagens até {MAX_IMAGE_MB}MB · vídeos até {MAX_VIDEO_MB}MB · arraste
+            as miniaturas para reordenar. Sem mídia? Pode postar só texto.
           </p>
         </div>
 
+        {/* CAPTION */}
         <div className="border-b border-border p-4">
-          <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            Descrição · use #tag para indexar
-          </span>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              Descrição
+            </span>
+            <span
+              className={`text-[11px] tabular-nums ${
+                pct >= 95
+                  ? "text-destructive"
+                  : pct >= 80
+                    ? "text-amber-500"
+                    : "text-muted-foreground"
+              }`}
+            >
+              {caption.length} / {MAX_CAPTION}
+            </span>
+          </div>
           <Textarea
+            ref={textareaRef}
             value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            maxLength={2000}
-            placeholder="Escreva algo… use #encontros #sp para aparecer nas buscas"
-            className="min-h-[88px] resize-none rounded-lg border-border bg-secondary/40 text-[14px]"
+            onChange={(e) => setCaption(e.target.value.slice(0, MAX_CAPTION))}
+            maxLength={MAX_CAPTION}
+            placeholder="Conte algo sobre o post… use #hashtags para aparecer nas buscas e @usuario para mencionar"
+            className="min-h-[110px] resize-none rounded-lg border-border bg-secondary/40 text-[14px] leading-relaxed"
           />
-          <div className="mt-1.5 flex items-center justify-between">
-            <div className="flex flex-wrap gap-1">
+
+          {captionParts.hasHighlight && (
+            <div className="mt-2 rounded-lg border border-border/60 bg-secondary/30 px-3 py-2 text-[13px] leading-relaxed">
+              {captionParts.nodes}
+            </div>
+          )}
+
+          <div className="mt-2.5">
+            <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              <Sparkles className="h-3 w-3" /> Sugeridas
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {SUGGESTED_TAGS.filter((t) => !tags.includes(t)).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => insertTag(t)}
+                  className="inline-flex items-center gap-0.5 rounded-full border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground/80 transition hover:border-primary/40 hover:text-foreground"
+                >
+                  <Hash className="h-2.5 w-2.5" strokeWidth={2.4} />
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {tags.length > 0 && (
+            <div className="mt-2.5 flex flex-wrap gap-1">
               {tags.map((t) => (
                 <span
                   key={t}
-                  className="inline-flex items-center gap-0.5 rounded-md border border-border bg-secondary/60 px-1.5 py-0.5 text-[10.5px] font-medium text-foreground/85"
+                  className="inline-flex items-center gap-0.5 rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary"
                 >
                   <Hash className="h-2.5 w-2.5" strokeWidth={2.4} />
                   {t}
                 </span>
               ))}
             </div>
-            <p className="text-right text-[11px] text-muted-foreground tabular-nums">
-              {caption.length} / 2000
-            </p>
-          </div>
+          )}
         </div>
 
+        {/* NSFW */}
         <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-md border border-border bg-secondary/60">
               <Eye className="h-3.5 w-3.5 text-foreground/80" strokeWidth={2} />
             </span>
             <div>
-              <p className="text-[14px] font-medium tracking-tight">Marcar como sensível</p>
+              <p className="text-[14px] font-medium tracking-tight">
+                Marcar como sensível
+              </p>
               <p className="text-[12px] text-muted-foreground">
                 Aplica blur por padrão até o usuário tocar
               </p>
@@ -250,26 +517,81 @@ function CreatePost() {
                 />
               </span>
               <span>
-                Declaro que <strong className="font-semibold">todos os retratados têm 18+</strong>{" "}
-                e consentiram a publicação. Esta declaração é registrada com timestamp.
+                Declaro que{" "}
+                <strong className="font-semibold">
+                  todos os retratados têm 18+
+                </strong>{" "}
+                e consentiram a publicação. Esta declaração é registrada com
+                timestamp.
               </span>
             </span>
           </label>
         )}
       </section>
 
-      <button
-        onClick={submit}
-        disabled={submitting}
-        className="mt-4 flex h-11 w-full items-center justify-center rounded-xl text-[14px] font-medium text-primary-foreground transition active:scale-[0.99] disabled:opacity-60"
-        style={{ background: "var(--gradient-brasa-h)" }}
-      >
-        {submitting
-          ? "Enviando…"
-          : hasMedia
-            ? "Publicar · vai para revisão"
-            : "Publicar"}
-      </button>
+      {/* STICKY PUBLISH BAR */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+          <div className="hidden flex-1 text-[12px] text-muted-foreground sm:block">
+            {hasMedia
+              ? `${files.length} mídia(s) · vai para revisão`
+              : caption.trim()
+                ? "Post só de texto"
+                : "Adicione mídia ou texto"}
+          </div>
+          <button
+            onClick={submit}
+            disabled={submitting}
+            className="relative ml-auto flex h-11 min-w-[160px] items-center justify-center overflow-hidden rounded-xl px-5 text-[14px] font-medium text-primary-foreground transition active:scale-[0.99] disabled:opacity-70"
+            style={{ background: "var(--gradient-brasa-h)" }}
+          >
+            {submitting && hasMedia && (
+              <span
+                className="absolute inset-y-0 left-0 bg-white/20 transition-[width]"
+                style={{ width: `${progress}%` }}
+              />
+            )}
+            <span className="relative">
+              {submitting
+                ? hasMedia
+                  ? `Enviando ${progress}%`
+                  : "Enviando…"
+                : hasMedia
+                  ? "Publicar"
+                  : "Publicar"}
+            </span>
+          </button>
+        </div>
+      </div>
     </div>
   );
+}
+
+function renderCaption(text: string): {
+  hasHighlight: boolean;
+  nodes: React.ReactNode;
+} {
+  if (!text.trim()) return { hasHighlight: false, nodes: null };
+  const parts = text.split(/(\s+)/);
+  let highlight = false;
+  const nodes = parts.map((p, i) => {
+    if (/^#[\wÀ-ÿ]+/.test(p)) {
+      highlight = true;
+      return (
+        <span key={i} className="font-medium text-primary">
+          {p}
+        </span>
+      );
+    }
+    if (/^@[\w.]+/.test(p)) {
+      highlight = true;
+      return (
+        <span key={i} className="font-medium text-foreground">
+          {p}
+        </span>
+      );
+    }
+    return <span key={i}>{p}</span>;
+  });
+  return { hasHighlight: highlight, nodes };
 }
