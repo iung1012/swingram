@@ -20,6 +20,7 @@ import {
   GripVertical,
   Sparkles,
   Upload,
+  Send,
 } from "lucide-react";
 
 const MAX_IMAGE_MB = 8;
@@ -64,6 +65,11 @@ function CreatePost() {
   const hasMedia = files.length > 0;
   const remaining = MAX_FILES - files.length;
   const pct = Math.min(100, Math.round((caption.length / MAX_CAPTION) * 100));
+
+  const canSubmit =
+    !submitting &&
+    (hasMedia || caption.trim().length > 0) &&
+    (!hasMedia || consent);
 
   useEffect(() => {
     return () => {
@@ -544,7 +550,7 @@ function CreatePost() {
           </div>
           <button
             onClick={submit}
-            disabled={submitting}
+            disabled={!canSubmit}
             className="relative ml-auto flex h-11 min-w-[160px] items-center justify-center overflow-hidden rounded-xl px-5 text-[14px] font-medium text-primary-foreground transition active:scale-[0.99] disabled:opacity-70"
             style={{ background: "var(--gradient-brasa-h)" }}
           >
@@ -559,13 +565,27 @@ function CreatePost() {
                 ? hasMedia
                   ? `Enviando ${progress}%`
                   : "Enviando…"
-                : hasMedia
-                  ? "Publicar"
-                  : "Publicar"}
+                : "Publicar"}
             </span>
           </button>
         </div>
       </div>
+
+      {/* FLOATING ACTION BUTTON */}
+      {canSubmit && (
+        <button
+          onClick={submit}
+          disabled={submitting}
+          title="Publicar"
+          className="fixed right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full text-primary-foreground shadow-lg transition hover:scale-105 active:scale-95 disabled:opacity-70"
+          style={{
+            bottom: "calc(80px + env(safe-area-inset-bottom))",
+            background: "var(--gradient-brasa-h)",
+          }}
+        >
+          <Send className="h-5 w-5" strokeWidth={2.2} />
+        </button>
+      )}
     </div>
   );
 }
