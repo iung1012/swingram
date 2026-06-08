@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -9,8 +9,17 @@ import { SignedImage } from "@/components/signed-image";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { toast } from "sonner";
 
+async function requireAdmin() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw redirect({ to: "/auth" });
+  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+  const list = (roles ?? []).map((r) => r.role);
+  if (!list.includes("admin")) throw redirect({ to: "/home" });
+}
+
 export const Route = createFileRoute("/_authenticated/admin/users")({
   ssr: false,
+  beforeLoad: requireAdmin,
   component: UsersAdmin,
 });
 
