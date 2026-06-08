@@ -69,7 +69,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Rede social adulta para encontros casuais, swing e exibicionismo. Acesso restrito a +18." },
       { property: "og:title", content: "Brasa Swing — Encontros adultos" },
       { property: "og:description", content: "Rede social +18 para encontros casuais e swing." },
-      { name: "theme-color", content: "#1a0a14" },
+      { name: "theme-color", content: "#0a0a0a" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
