@@ -8,7 +8,6 @@ interface VerifiedAvatarProps {
   alt: string;
   verified?: boolean;
   className?: string;
-  ringClassName?: string;
 }
 
 export function VerifiedAvatar({
@@ -17,15 +16,17 @@ export function VerifiedAvatar({
   alt,
   verified = false,
   className = "h-9 w-9",
-  ringClassName,
 }: VerifiedAvatarProps) {
   return (
-    <div className={cn("relative inline-block", className)}>
+    <div className="relative inline-flex items-center justify-center">
       {verified ? (
         <>
           <div
-            className="absolute -inset-[2.5px] rounded-full opacity-80"
-            style={{ background: "var(--gradient-brasa-h)" }}
+            className="absolute inset-0 rounded-full opacity-80"
+            style={{
+              background: "var(--gradient-brasa-h)",
+              padding: "2.5px",
+            }}
           />
           <SignedImage
             bucket={bucket}
@@ -42,7 +43,7 @@ export function VerifiedAvatar({
         </>
       ) : (
         <>
-          <div className="absolute -inset-[1.5px] rounded-full border-2 border-border/80" />
+          <div className="absolute inset-0 rounded-full border-2 border-border/80" />
           <SignedImage
             bucket={bucket}
             path={path}
