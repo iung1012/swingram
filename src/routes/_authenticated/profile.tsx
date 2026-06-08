@@ -9,6 +9,8 @@ import { SignedMedia } from "@/components/signed-media";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { PostCard, type PostCardData } from "@/components/post-card";
+import { ZoomPostContent } from "@/components/zoom-post-content";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   Settings,
