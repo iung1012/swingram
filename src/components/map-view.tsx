@@ -1,26 +1,28 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { Plus, Minus, Locate, Maximize2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
 import { distanceKm } from "@/lib/geo";
 import { Card } from "@/components/ui/card";
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 
-// Custom flame pin (no Google-style marker)
-const flamePin = L.divIcon({
-  className: "",
-  html: `<div style="
-    width: 22px; height: 22px; border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, oklch(0.88 0.18 85), oklch(0.64 0.24 28) 70%);
-    box-shadow: 0 0 12px oklch(0.7 0.22 45 / 0.85), 0 0 0 2px oklch(0.08 0 0);
-  "></div>`,
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
-});
+const DARK_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json";
+
+type NearbyProfile = {
+  user_id: string;
+  handle: string;
+  display_name: string;
+  avatar_url: string | null;
+  verified: boolean | null;
+  city: string | null;
+  lat_snap: number;
+  lng_snap: number;
+  km: number;
+};
 
 export default function MapView() {
   const { user } = useAuth();
@@ -36,24 +38,115 @@ export default function MapView() {
         .neq("user_id", user!.id);
       return (data ?? [])
         .filter((p: any) => !p.invisible_mode && !p.banned && !p.shadow_banned && p.lat_snap && p.lng_snap)
-        .map((p: any) => ({ ...p, km: distanceKm({ lat: me!.lat_snap!, lng: me!.lng_snap! }, { lat: p.lat_snap, lng: p.lng_snap }) }))
+        .map((p: any) => ({
+          ...p,
+          km: distanceKm({ lat: me!.lat_snap!, lng: me!.lng_snap! }, { lat: p.lat_snap, lng: p.lng_snap }),
+        }))
         .sort((a: any, b: any) => a.km - b.km)
-        .slice(0, 100);
+        .slice(0, 100) as NearbyProfile[];
     },
   });
 
   const center = useMemo<[number, number]>(
-    () => (me?.lat_snap && me?.lng_snap ? [me.lat_snap, me.lng_snap] : [-14.235, -51.9253]),
+    () => (me?.lng_snap && me?.lat_snap ? [me.lng_snap, me.lat_snap] : [-51.9253, -14.235]),
     [me?.lat_snap, me?.lng_snap]
   );
+
+  const mapContainer = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const [selected, setSelected] = useState<NearbyProfile | null>(null);
+
+  // init map
+  useEffect(() => {
+    if (!mapContainer.current || mapRef.current) return;
+    const map = new maplibregl.Map({
+      container: mapContainer.current,
+      style: DARK_STYLE,
+      center,
+      zoom: 11,
+      attributionControl: false,
+      pitchWithRotate: false,
+      dragRotate: false,
+    });
+    mapRef.current = map;
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // recenter when profile loads
+  useEffect(() => {
+    if (!mapRef.current || !me?.lat_snap || !me?.lng_snap) return;
+    mapRef.current.easeTo({ center: [me.lng_snap, me.lat_snap], zoom: 12, duration: 600 });
+  }, [me?.lat_snap, me?.lng_snap]);
+
+  // render markers
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    // clear
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    // self marker (white ring)
+    if (me?.lat_snap && me?.lng_snap) {
+      const el = document.createElement("div");
+      el.className = "self-marker";
+      el.style.cssText = `
+        width:16px;height:16px;border-radius:9999px;
+        background:#fff;
+        box-shadow:0 0 0 3px rgba(255,255,255,0.18),0 0 18px rgba(255,255,255,0.5);
+      `;
+      const m = new maplibregl.Marker({ element: el }).setLngLat([me.lng_snap, me.lat_snap]).addTo(map);
+      markersRef.current.push(m);
+    }
+
+    (nearby ?? []).forEach((p) => {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.style.cssText = `
+        width:22px;height:22px;border-radius:9999px;cursor:pointer;border:0;padding:0;
+        background:radial-gradient(circle at 35% 30%, oklch(0.88 0.18 85), oklch(0.64 0.24 28) 70%);
+        box-shadow:0 0 14px oklch(0.7 0.22 45 / 0.9), 0 0 0 2px #0a0a0a;
+      `;
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setSelected(p);
+        map.easeTo({ center: [p.lng_snap, p.lat_snap], duration: 400 });
+      });
+      const m = new maplibregl.Marker({ element: el }).setLngLat([p.lng_snap, p.lat_snap]).addTo(map);
+      markersRef.current.push(m);
+    });
+  }, [nearby, me?.lat_snap, me?.lng_snap]);
+
+  const zoom = (delta: number) => mapRef.current?.zoomTo((mapRef.current.getZoom() ?? 11) + delta, { duration: 200 });
+  const recenter = () => {
+    if (me?.lat_snap && me?.lng_snap) {
+      mapRef.current?.easeTo({ center: [me.lng_snap, me.lat_snap], zoom: 13, duration: 500 });
+    }
+  };
+  const fit = () => {
+    if (!mapRef.current) return;
+    const pts: [number, number][] = [];
+    if (me?.lat_snap && me?.lng_snap) pts.push([me.lng_snap, me.lat_snap]);
+    (nearby ?? []).forEach((p) => pts.push([p.lng_snap, p.lat_snap]));
+    if (pts.length < 2) return;
+    const b = new maplibregl.LngLatBounds(pts[0], pts[0]);
+    pts.forEach((p) => b.extend(p));
+    mapRef.current.fitBounds(b, { padding: 60, duration: 600, maxZoom: 13 });
+  };
 
   return (
     <div className="mx-auto max-w-2xl px-4 pt-6">
       <div className="mb-4 flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Próximos</h1>
-          <p className="text-xs text-muted-foreground">{nearby?.length ?? 0} brasas por perto</p>
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Próximos</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Mapa de brasas</h1>
         </div>
+        <span className="text-xs text-muted-foreground tabular-nums">{nearby?.length ?? 0} por perto</span>
       </div>
 
       {!me?.lat_snap ? (
@@ -67,66 +160,75 @@ export default function MapView() {
       ) : (
         <>
           <div className="relative overflow-hidden rounded-3xl border border-border shadow-2xl">
-            {/* Subtle warm vignette on top of the dark map */}
-            <div className="pointer-events-none absolute inset-0 z-[400]"
-              style={{ boxShadow: "inset 0 0 80px oklch(0.08 0 0 / 0.9), inset 0 80px 40px -40px oklch(0.6 0.25 25 / 0.18)" }} />
-            <div style={{ height: 460, width: "100%" }}>
-              <MapContainer center={center} zoom={11} style={{ height: "100%", width: "100%" }} zoomControl={false} attributionControl={false}>
-                {/* Carto dark, NO labels — pure shapes only */}
-                <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png" />
-                <CircleMarker
-                  center={center}
-                  radius={9}
-                  pathOptions={{ color: "oklch(0.85 0.18 85)", fillColor: "oklch(0.74 0.2 55)", fillOpacity: 0.95, weight: 2 }}
-                />
-                {(nearby ?? []).map((p: any) => (
-                  <Marker key={p.user_id} position={[p.lat_snap, p.lng_snap]} icon={flamePin}>
-                    <Popup>
-                      <div className="text-sm">
-                        <p className="font-semibold">{p.display_name}</p>
-                        <p className="text-xs opacity-70">@{p.handle} · ~{p.km.toFixed(1)} km</p>
-                        <Link to={"/u/$handle" as never} params={{ handle: p.handle } as never} className="text-primary underline">
-                          Ver perfil
-                        </Link>
-                      </div>
-                    </Popup>
-                  </Marker>
-                ))}
-              </MapContainer>
+            <div ref={mapContainer} style={{ height: 480, width: "100%" }} className="bg-[#0a0a0a]" />
+
+            {/* warm vignette */}
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                boxShadow:
+                  "inset 0 0 90px oklch(0.06 0 0 / 0.95), inset 0 80px 50px -40px oklch(0.6 0.25 25 / 0.16)",
+              }}
+            />
+
+            {/* top-right controls */}
+            <div className="absolute right-3 top-3 flex flex-col gap-1.5">
+              <ControlBtn onClick={() => zoom(1)} label="Aproximar"><Plus className="h-4 w-4" /></ControlBtn>
+              <ControlBtn onClick={() => zoom(-1)} label="Afastar"><Minus className="h-4 w-4" /></ControlBtn>
+              <ControlBtn onClick={recenter} label="Minha localização"><Locate className="h-4 w-4" /></ControlBtn>
+              <ControlBtn onClick={fit} label="Ver tudo"><Maximize2 className="h-4 w-4" /></ControlBtn>
             </div>
+
+            {/* selected popup */}
+            {selected && (
+              <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-border bg-card/95 p-3 backdrop-blur">
+                <div className="flex items-center gap-3">
+                  {selected.avatar_url ? (
+                    <img src={selected.avatar_url} alt="" className="h-10 w-10 rounded-full object-cover" />
+                  ) : (
+                    <div className="h-10 w-10 rounded-full bg-secondary" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{selected.display_name}</p>
+                    <p className="truncate text-xs text-muted-foreground">@{selected.handle} · ~{selected.km.toFixed(1)} km</p>
+                  </div>
+                  <Link
+                    to={"/u/$handle" as never}
+                    params={{ handle: selected.handle } as never}
+                    className="rounded-full border border-border px-3 py-1.5 text-xs hover:bg-secondary"
+                  >
+                    Ver
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setSelected(null)}
+                    className="ml-1 rounded-full p-1 text-muted-foreground hover:bg-secondary"
+                    aria-label="Fechar"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           <p className="mt-3 px-1 text-[11px] leading-relaxed text-muted-foreground">
             Posições arredondadas a ~500m + offset aleatório fixo por usuário. Ninguém vê a localização exata.
           </p>
-
-          {/* Nearby list — sleek Apple-like rows */}
-          {nearby && nearby.length > 0 && (
-            <div className="mt-5 space-y-2">
-              {nearby.slice(0, 12).map((p: any) => (
-                <Link
-                  key={p.user_id}
-                  to={"/u/$handle" as never}
-                  params={{ handle: p.handle } as never}
-                  className="flex items-center gap-3 rounded-2xl border border-border bg-card/60 p-3 backdrop-blur transition active:scale-[0.99] hover:border-primary/40"
-                >
-                  <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-secondary">
-                    <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-muted-foreground">
-                      {p.display_name?.[0] ?? "?"}
-                    </div>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{p.display_name}</p>
-                    <p className="truncate text-xs text-muted-foreground">@{p.handle}</p>
-                  </div>
-                  <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                    {p.km.toFixed(1)} km
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
         </>
       )}
     </div>
+  );
+}
+
+function ControlBtn({ onClick, children, label }: { onClick: () => void; children: React.ReactNode; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card/90 text-foreground backdrop-blur transition hover:bg-secondary"
+    >
+      {children}
+    </button>
   );
 }
