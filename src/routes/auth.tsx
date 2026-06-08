@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { computeAge } from "@/lib/age";
 import { BrasaLogo } from "@/components/brasa-logo";
 import { SpiralLoader } from "@/components/spiral-loader";
+import { Eye, EyeOff } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
