@@ -104,6 +104,8 @@ function PublicProfile() {
       toast.success("Seguindo");
     }
     qc.invalidateQueries({ queryKey: ["follow", user.id, profile.user_id] });
+    qc.invalidateQueries({ queryKey: ["profile-stats", profile.user_id] });
+
   }
 
   async function shareProfile() {
