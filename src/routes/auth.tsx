@@ -172,7 +172,10 @@ function AuthPage() {
                 />
               </FieldGroup>
               <p className="px-1 text-[11px] leading-relaxed text-white/40">
-                Ao criar conta você declara ter 18 anos ou mais e aceita os Termos.
+                Ao criar conta você declara ter 18 anos ou mais e aceita os{" "}
+                <Link to="/terms" className="underline hover:text-white/60">Termos de Uso</Link>
+                {" "}e{" "}
+                <Link to="/privacy" className="underline hover:text-white/60">Política de Privacidade</Link>.
               </p>
             </>
           )}
@@ -212,8 +215,15 @@ function AuthPage() {
           Continuar com Google
         </button>
 
+        {/* Legal links */}
+        <div className="mt-8 flex justify-center gap-4 text-[11px] text-white/30">
+          <Link to="/terms" className="hover:text-white/50 transition-colors">Termos de Uso</Link>
+          <span>·</span>
+          <Link to="/privacy" className="hover:text-white/50 transition-colors">Privacidade</Link>
+        </div>
+
         {/* Footnote */}
-        <p className="mt-12 text-center text-[10px] font-medium uppercase tracking-widest text-white/25">
+        <p className="mt-6 text-center text-[10px] font-medium uppercase tracking-widest text-white/25">
           Comunidade adulta verificada · +18
         </p>
       </main>
