@@ -527,24 +527,24 @@ function ZoomPostContent({
   return (
     <div
       className={
-        "grid max-h-[85vh] grid-cols-1 overflow-hidden " +
+        "grid min-h-0 flex-1 grid-cols-1 overflow-hidden " +
         (showMediaPane ? "md:grid-cols-[1.2fr_1fr]" : "")
       }
     >
       {showMediaPane && (
-        <div className="flex items-center justify-center bg-black">
+        <div className="flex max-h-[40vh] items-center justify-center bg-black md:max-h-none">
           <SignedMedia
             bucket="posts"
             path={url}
             kind={kind === "video" ? "video" : "image"}
             alt=""
             controls={kind === "video"}
-            className="max-h-[85vh] w-full object-contain"
+            className="h-full max-h-[40vh] w-full object-contain md:max-h-none"
           />
         </div>
       )}
-      <div className="flex max-h-[85vh] flex-col">
-        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-2.5">
           <FireLike
             liked={liked}
             count={likes}
@@ -556,39 +556,41 @@ function ZoomPostContent({
             {(comments ?? []).length}
           </span>
         </div>
-        {caption && (
-          <div className="whitespace-pre-wrap border-b border-border px-4 py-3 text-[14px] leading-relaxed text-foreground/90">
-            {renderCaption(caption)}
-          </div>
-        )}
-        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
-          {(comments ?? []).length === 0 ? (
-            <p className="text-center text-[12px] text-muted-foreground">
-              Seja o primeiro a comentar.
-            </p>
-          ) : (
-            (comments ?? []).map((c: any) => (
-              <div key={c.id} className="flex gap-2.5">
-                <VerifiedAvatar
-                  bucket="avatars"
-                  path={c.profile?.avatar_url}
-                  alt={c.profile?.display_name ?? ""}
-                  verified={false}
-                  className="h-7 w-7 shrink-0"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12px]">
-                    <span className="font-semibold">@{c.profile?.handle ?? "user"}</span>{" "}
-                    <span className="text-foreground/90">{c.body}</span>
-                  </p>
-                </div>
-              </div>
-            ))
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {caption && (
+            <div className="whitespace-pre-wrap border-b border-border px-4 py-3 text-[14px] leading-relaxed text-foreground/90">
+              {renderCaption(caption)}
+            </div>
           )}
+          <div className="space-y-3 px-4 py-3">
+            {(comments ?? []).length === 0 ? (
+              <p className="text-center text-[12px] text-muted-foreground">
+                Seja o primeiro a comentar.
+              </p>
+            ) : (
+              (comments ?? []).map((c: any) => (
+                <div key={c.id} className="flex gap-2.5">
+                  <VerifiedAvatar
+                    bucket="avatars"
+                    path={c.profile?.avatar_url}
+                    alt={c.profile?.display_name ?? ""}
+                    verified={false}
+                    className="h-7 w-7 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px]">
+                      <span className="font-semibold">@{c.profile?.handle ?? "user"}</span>{" "}
+                      <span className="text-foreground/90">{c.body}</span>
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
         <form
           onSubmit={submit}
-          className="flex items-center gap-2 border-t border-border bg-card/80 px-3 py-2"
+          className="flex shrink-0 items-center gap-2 border-t border-border bg-card/95 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur"
         >
           <input
             value={body}
