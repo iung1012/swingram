@@ -117,6 +117,27 @@ export function PostCard({
     },
   });
 
+  const { data: likers } = useQuery({
+    queryKey: ["post-likers", post.id],
+    enabled: likesOpen,
+    queryFn: async () => {
+      const { data: rows } = await supabase
+        .from("likes")
+        .select("user_id")
+        .eq("post_id", post.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      const ids = Array.from(new Set((rows ?? []).map((r: any) => r.user_id)));
+      if (!ids.length) return [];
+      const { data: ps } = await supabase
+        .from("profiles")
+        .select("user_id, handle, display_name, avatar_url, verified")
+        .in("user_id", ids);
+      const map = new Map((ps ?? []).map((p: any) => [p.user_id, p]));
+      return (rows ?? []).map((r: any) => map.get(r.user_id)).filter(Boolean);
+    },
+  });
+
   async function deleteComment(commentId: string) {
     const { error } = await supabase.from("comments").delete().eq("id", commentId);
     if (error) toast.error("Falha ao apagar");
