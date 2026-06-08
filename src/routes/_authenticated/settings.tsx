@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import {
   MapPin, EyeOff, Eye, Navigation, ShieldCheck, Download, LogOut, Trash2, ChevronRight, ChevronLeft,
 } from "lucide-react";
+import { SpiralLoaderBlock } from "@/components/spiral-loader";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   ssr: false,
@@ -19,7 +20,7 @@ function Settings() {
   const { user } = useAuth();
   const nav = useNavigate();
   const { data: profile, refetch } = useMyProfile(user?.id);
-  if (!profile) return <p className="p-6 text-center text-sm text-muted-foreground">Carregando...</p>;
+  if (!profile) return <SpiralLoaderBlock />;
 
   async function toggle(field: "share_location" | "invisible_mode" | "nsfw_blur_default", value: boolean) {
     await supabase.from("profiles").update({ [field]: value } as never).eq("user_id", user!.id);

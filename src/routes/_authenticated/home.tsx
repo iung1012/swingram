@@ -7,6 +7,7 @@ import { useMyProfile } from "@/hooks/use-profile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PostCard, type PostCardData } from "@/components/post-card";
 import { Flame, Search } from "lucide-react";
+import { SpiralLoaderBlock } from "@/components/spiral-loader";
 
 export const Route = createFileRoute("/_authenticated/home")({
   ssr: false,
@@ -161,7 +162,7 @@ function Feed({ mode, userId, interests, defaultBlur }: { mode: FeedMode; userId
     queryKey: ["feed", mode, userId, interests.join(",")],
     queryFn: () => fetchFeed(userId, mode, interests),
   });
-  if (isLoading) return <p className="py-12 text-center text-sm text-muted-foreground">Carregando...</p>;
+  if (isLoading) return <SpiralLoaderBlock />;
   if (!data || data.length === 0) {
     const msg =
       mode === "following"

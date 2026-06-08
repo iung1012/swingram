@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { computeAge } from "@/lib/age";
 import { BrasaLogo, BrasaWordmark } from "@/components/brasa-logo";
 import { Mail, Lock, Calendar, ArrowRight } from "lucide-react";
+import { SpiralLoader } from "@/components/spiral-loader";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -140,7 +141,7 @@ function AuthPage() {
             style={{ background: "var(--gradient-brasa-h)" }}
           >
             <span className="relative z-10 inline-flex items-center justify-center gap-2">
-              {loading ? "Carregando..." : mode === "login" ? "Entrar" : "Criar conta +18"}
+              {loading ? <SpiralLoader size={18} /> : (mode === "login" ? "Entrar" : "Criar conta +18")}
               <ArrowRight className="h-5 w-5 transition group-hover:translate-x-0.5" />
             </span>
           </Button>
