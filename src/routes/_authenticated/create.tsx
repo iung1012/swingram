@@ -530,7 +530,10 @@ function CreatePost() {
       </section>
 
       {/* STICKY PUBLISH BAR */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+      <div
+        className="fixed inset-x-0 z-50 border-t border-border bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70"
+        style={{ bottom: "calc(64px + env(safe-area-inset-bottom))" }}
+      >
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <div className="hidden flex-1 text-[12px] text-muted-foreground sm:block">
             {hasMedia
