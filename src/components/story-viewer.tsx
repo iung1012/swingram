@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion, AnimatePresence, type PanInfo } from "framer-motion";
-import { X, ChevronLeft, ChevronRight, Pause } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Pause, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SpiralLoader } from "@/components/spiral-loader";
 
@@ -41,6 +41,8 @@ export interface StoryViewerProps {
   initialIndex?: number;
   onClose: () => void;
   onStoryView?: (id: string) => void;
+  onDeleteStory?: (id: string) => void | Promise<void>;
+  canDelete?: boolean;
 }
 
 export function StoryViewer({
@@ -51,6 +53,8 @@ export function StoryViewer({
   initialIndex = 0,
   onClose,
   onStoryView,
+  onDeleteStory,
+  canDelete = false,
 }: StoryViewerProps) {
   const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
   const [progress, setProgress] = React.useState(0);
@@ -88,9 +92,13 @@ export function StoryViewer({
     elapsedRef.current = 0;
   }, [currentIndex]);
 
+  const lastViewedRef = React.useRef<string | null>(null);
   React.useEffect(() => {
+    if (!story?.id) return;
+    if (lastViewedRef.current === story.id) return;
+    lastViewedRef.current = story.id;
     onStoryView?.(story.id);
-  }, [story.id, onStoryView]);
+  }, [story?.id, onStoryView]);
 
   React.useEffect(() => {
     setProgress(0);
@@ -200,6 +208,19 @@ export function StoryViewer({
             <p className="truncate text-sm font-semibold text-white drop-shadow">{username}</p>
             {timestamp && <p className="text-[11px] text-white/70">{fmtTime(timestamp)}</p>}
           </div>
+          {canDelete && onDeleteStory && (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!confirm("Excluir este story?")) return;
+                await onDeleteStory(story.id);
+              }}
+              aria-label="Excluir story"
+              className="rounded-full p-1.5 text-white/90 hover:bg-white/15"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
