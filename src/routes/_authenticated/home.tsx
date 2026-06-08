@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PostCard, type PostCardData } from "@/components/post-card";
 import { Flame, Search } from "lucide-react";
 import { SpiralLoaderBlock } from "@/components/spiral-loader";
+import { StoriesRail } from "@/components/stories-rail";
 
 export const Route = createFileRoute("/_authenticated/home")({
   ssr: false,
@@ -113,6 +114,9 @@ function Home() {
           <Flame className="text-primary" /> Brasa Swing
         </h1>
       </header>
+
+      <StoriesRail />
+
 
       <form onSubmit={submitSearch} className="mb-3">
         <label className="flex h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 transition-colors focus-within:border-foreground/25">
