@@ -66,7 +66,7 @@ function BannersAdmin() {
       <div className="space-y-2">
         {(data ?? []).map((b: any) => (
           <Card key={b.id} className="flex items-center gap-3 p-3">
-            <SignedImage bucket="verification" path={b.image_url} alt="banner" className="h-16 w-28 rounded object-cover" />
+            <SignedImage bucket="banners" path={b.image_url} alt="banner" className="h-16 w-28 rounded object-cover" />
             <div className="flex-1">
               <p className="text-sm">{b.position}</p>
               {b.link && <a href={b.link} className="text-xs text-muted-foreground underline">{b.link}</a>}
