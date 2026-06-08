@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SignedImage } from "@/components/signed-image";
 import { SignedMedia } from "@/components/signed-media";
+import { PostCard, type PostCardData } from "@/components/post-card";
 import { renderCaption } from "@/lib/hashtags";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
@@ -45,18 +46,67 @@ function PublicProfile() {
     },
   });
 
-  const { data: posts } = useQuery({
-    queryKey: ["public-posts", profile?.user_id],
+  const { data: postCards } = useQuery<PostCardData[]>({
+    queryKey: ["public-posts", profile?.user_id, user?.id],
     enabled: !!profile,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: rows } = await supabase
         .from("posts")
-        .select("id, caption, post_media(url, order, kind)")
+        .select(`id, user_id, caption, nsfw, created_at, post_media(url, order, kind)`)
         .eq("user_id", profile!.user_id)
         .eq("moderation_status", "approved")
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
-      return data ?? [];
+
+      const postRows = rows ?? [];
+      if (postRows.length === 0) return [];
+
+      const ids = postRows.map((r: any) => r.id);
+      const [{ data: likes }, { data: comments }, savesRes] = await Promise.all([
+        supabase.from("likes").select("post_id, user_id").in("post_id", ids),
+        supabase.from("comments").select("post_id").in("post_id", ids),
+        user?.id
+          ? supabase.from("saves").select("post_id").eq("user_id", user.id).in("post_id", ids)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const likesMap: Record<string, number> = {};
+      const likesByMe = new Set<string>();
+      (likes ?? []).forEach((l: any) => {
+        likesMap[l.post_id] = (likesMap[l.post_id] ?? 0) + 1;
+        if (user?.id && l.user_id === user.id) likesByMe.add(l.post_id);
+      });
+
+      const commentsMap: Record<string, number> = {};
+      (comments ?? []).forEach((c: any) => {
+        commentsMap[c.post_id] = (commentsMap[c.post_id] ?? 0) + 1;
+      });
+
+      const savedByMe = new Set<string>();
+      (savesRes?.data ?? []).forEach((s: any) => savedByMe.add(s.post_id));
+
+      const author = {
+        handle: profile!.handle,
+        display_name: profile!.display_name,
+        avatar_url: profile!.avatar_url,
+        verified: profile!.verified,
+      };
+
+      return postRows.map((r: any) => ({
+        id: r.id,
+        user_id: r.user_id,
+        caption: r.caption,
+        nsfw: r.nsfw,
+        created_at: r.created_at,
+        author,
+        media: (r.post_media ?? [])
+          .sort((a: any, b: any) => a.order - b.order)
+          .map((m: any) => ({ url: m.url, order: m.order, kind: m.kind })),
+        likes_count: likesMap[r.id] ?? 0,
+        liked_by_me: likesByMe.has(r.id),
+        saved_by_me: savedByMe.has(r.id),
+        comments_count: commentsMap[r.id] ?? 0,
+      }));
     },
   });
 
@@ -271,7 +321,7 @@ function PublicProfile() {
           <div className="mt-4 flex items-center gap-5 border-t border-border/60 pt-3 text-[12px]">
             <div className="flex items-center gap-1.5">
               <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
-              <span className="font-semibold tabular-nums">{(posts ?? []).length}</span>
+              <span className="font-semibold tabular-nums">{(postCards ?? []).length}</span>
               <span className="text-muted-foreground">posts</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -342,40 +392,58 @@ function PublicProfile() {
         <div className="mb-2.5 flex items-center justify-between px-1">
           <h2 className="inline-flex items-center gap-1.5 text-[13px] font-semibold tracking-tight">
             <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
-            Posts
+            Postagens
           </h2>
-          <span className="text-[11px] text-muted-foreground">{(posts ?? []).length}</span>
+          <span className="text-[11px] text-muted-foreground">{(postCards ?? []).length}</span>
         </div>
-        {!posts || posts.length === 0 ? (
+        {!postCards || postCards.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/40 px-4 py-10 text-center">
             <p className="text-[13px] text-muted-foreground">Nenhum post publicado.</p>
           </div>
         ) : (
+          <div className="space-y-4">
+            {postCards.map((p) => (
+              <PostCard key={p.id} post={p} currentUserId={user?.id ?? null} defaultBlur={false} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <div className="mb-2.5 flex items-center justify-between px-1">
+          <h2 className="inline-flex items-center gap-1.5 text-[13px] font-semibold tracking-tight">
+            <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+            Fotos
+          </h2>
+          <span className="text-[11px] text-muted-foreground">
+            {(postCards ?? []).filter((p) => p.media.length > 0).length}
+          </span>
+        </div>
+        {!postCards || postCards.filter((p) => p.media.length > 0).length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/40 px-4 py-10 text-center">
+            <p className="text-[13px] text-muted-foreground">Nenhuma foto ou vídeo publicado.</p>
+          </div>
+        ) : (
           <div className="grid grid-cols-3 gap-1.5">
-            {posts.map((p: any) => {
-              const first = (p.post_media ?? []).sort((a: any, b: any) => a.order - b.order)[0];
-              const kind: "image" | "video" | "text" = first ? first.kind ?? "image" : "text";
-              return (
-                <button
-                  type="button"
-                  key={p.id}
-                  onClick={() =>
-                    setZoomPost({
-                      id: p.id,
-                      url: first?.url ?? null,
-                      kind,
-                      caption: p.caption ?? "",
-                    })
-                  }
-                  className="group relative overflow-hidden rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  {kind === "text" ? (
-                    <div className="flex aspect-square w-full items-center justify-center bg-secondary/40 p-2">
-                      <p className="line-clamp-5 text-center text-[11px] leading-snug text-foreground/90">
-                        {p.caption || "(sem texto)"}
-                      </p>
-                    </div>
-                  ) : (
+            {postCards
+              .filter((p) => p.media.length > 0)
+              .map((p) => {
+                const first = p.media[0];
+                const kind = first?.kind ?? "image";
+                return (
+                  <button
+                    type="button"
+                    key={p.id}
+                    onClick={() =>
+                      setZoomPost({
+                        id: p.id,
+                        url: first?.url ?? null,
+                        kind: kind as "image" | "video" | "text",
+                        caption: p.caption ?? "",
+                      })
+                    }
+                    className="group relative overflow-hidden rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
                     <SignedMedia
                       bucket="posts"
                       path={first?.url}
@@ -385,15 +453,14 @@ function PublicProfile() {
                       muted
                       className="aspect-square w-full object-cover transition-transform group-hover:scale-105"
                     />
-                  )}
-                  {kind === "video" && (
-                    <span className="pointer-events-none absolute right-1.5 top-1.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur">
-                      ▶ vídeo
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                    {kind === "video" && (
+                      <span className="pointer-events-none absolute right-1.5 top-1.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur">
+                        ▶ vídeo
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
           </div>
         )}
       </section>
