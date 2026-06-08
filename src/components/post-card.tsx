@@ -362,16 +362,31 @@ export function PostCard({
               </div>
             </DialogContent>
           </Dialog>
-          <button
-            type="button"
-            onClick={() => setShowComments((v) => !v)}
-            aria-label="Comentários"
-            aria-expanded={showComments}
-            className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
-          >
-            <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
-            {comments?.length ?? post.comments_count}
-          </button>
+          {commentsAsDialog ? (
+            <Dialog open={commentsOpen} onOpenChange={setCommentsOpen}>
+              <DialogTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Comentários"
+                  className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+                >
+                  <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
+                  {comments?.length ?? post.comments_count}
+                </button>
+              </DialogTrigger>
+            </Dialog>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowComments((v) => !v)}
+              aria-label="Comentários"
+              aria-expanded={showComments}
+              className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+            >
+              <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
+              {comments?.length ?? post.comments_count}
+            </button>
+          )}
         </div>
         <button
           onClick={toggleSave}
