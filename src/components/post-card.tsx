@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck, Heart, Trash2 } from "lucide-react";
+import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck, Heart, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FireLike } from "./fire-like";
 import { SignedMedia } from "./signed-media";
@@ -14,8 +14,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { renderCaption } from "@/lib/hashtags";
+
 
 type Media = { url: string; order: number; kind?: "image" | "video" };
 type Author = {
@@ -56,6 +64,7 @@ export function PostCard({
   const [showComments, setShowComments] = useState(false);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [likesOpen, setLikesOpen] = useState(false);
   const hasMedia = (post.media ?? []).length > 0;
   const current = post.media[active];
 
@@ -105,6 +114,27 @@ export function PostCard({
         liked_by_me: likesByComment.get(c.id)?.mine ?? false,
         liked_by_author: likesByComment.get(c.id)?.byAuthor ?? false,
       }));
+    },
+  });
+
+  const { data: likers } = useQuery({
+    queryKey: ["post-likers", post.id],
+    enabled: likesOpen,
+    queryFn: async () => {
+      const { data: rows } = await supabase
+        .from("likes")
+        .select("user_id")
+        .eq("post_id", post.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      const ids = Array.from(new Set((rows ?? []).map((r: any) => r.user_id)));
+      if (!ids.length) return [];
+      const { data: ps } = await supabase
+        .from("profiles")
+        .select("user_id, handle, display_name, avatar_url, verified")
+        .in("user_id", ids);
+      const map = new Map((ps ?? []).map((p: any) => [p.user_id, p]));
+      return (rows ?? []).map((r: any) => map.get(r.user_id)).filter(Boolean);
     },
   });
 
@@ -285,7 +315,50 @@ export function PostCard({
 
       <div className="flex items-center justify-between px-3 py-2.5">
         <div className="flex items-center gap-4">
-          <FireLike liked={liked} count={likes} onToggle={toggleLike} disabled={!currentUserId} />
+          <Dialog open={likesOpen} onOpenChange={setLikesOpen}>
+            <DialogTrigger asChild>
+              <button className="inline-flex items-center gap-1">
+                <FireLike liked={liked} count={likes} onToggle={toggleLike} disabled={!currentUserId} />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[80vh] overflow-hidden p-0">
+              <DialogHeader className="px-5 pt-5 pb-3">
+                <DialogTitle className="text-[15px]">Curtidas</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 overflow-y-auto px-5 pb-5">
+                {(likers ?? []).length === 0 ? (
+                  <p className="text-center text-[12px] text-muted-foreground">
+                    {likesOpen ? "Ninguém curtiu ainda." : "Carregando…"}
+                  </p>
+                ) : (
+                  (likers ?? []).map((p: any) => (
+                    <Link
+                      key={p.user_id}
+                      to={"/u/$handle" as never}
+                      params={{ handle: p.handle } as never}
+                      className="flex items-center gap-2.5"
+                      onClick={() => setLikesOpen(false)}
+                    >
+                      <VerifiedAvatar
+                        bucket="avatars"
+                        path={p.avatar_url}
+                        alt={p.display_name}
+                        verified={p.verified}
+                        className="h-8 w-8"
+                      />
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-1 truncate text-[13px] font-semibold leading-tight">
+                          {p.display_name}
+                          {p.verified && <VerifiedBadge />}
+                        </p>
+                        <p className="truncate text-[11px] text-muted-foreground">@{p.handle}</p>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
           <button
             type="button"
             onClick={() => setShowComments((v) => !v)}
