@@ -277,6 +277,7 @@ function CreatePost() {
       toast.success(
         hasMedia ? "Enviado. Aguardando aprovação da moderação." : "Publicado",
       );
+      clearDraft();
       nav({ to: "/profile" });
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao postar");
