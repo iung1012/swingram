@@ -106,7 +106,7 @@ function Notifications() {
                   <div className="relative">
                     <VerifiedAvatar
                       bucket="avatars"
-                      path={a?.avatar_url}
+                      path={a?.avatar_url ?? null}
                       alt={a?.display_name ?? ""}
                       verified={a?.verified ?? false}
                       className="h-10 w-10"
