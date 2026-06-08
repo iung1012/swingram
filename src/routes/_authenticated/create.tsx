@@ -66,6 +66,11 @@ function CreatePost() {
   const remaining = MAX_FILES - files.length;
   const pct = Math.min(100, Math.round((caption.length / MAX_CAPTION) * 100));
 
+  const canSubmit =
+    !submitting &&
+    (hasMedia || caption.trim().length > 0) &&
+    (!hasMedia || consent);
+
   useEffect(() => {
     return () => {
       files.forEach((f) => URL.revokeObjectURL(f.preview));
