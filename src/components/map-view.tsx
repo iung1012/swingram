@@ -278,12 +278,22 @@ export default function MapView() {
         <span className="text-xs text-muted-foreground tabular-nums">{visibleCount} na região</span>
       </div>
 
-      {!me?.lat_snap ? (
+      {!selfPos ? (
         <Card className="mb-4 p-5 text-sm">
           <p className="font-semibold">Compartilhe sua localização</p>
           <p className="mt-1 text-muted-foreground">
-            Posição arredondada para ~500m com offset aleatório. Habilite em{" "}
-            <Link to="/settings" className="text-primary underline">Configurações</Link>.
+            Usamos sua posição atual arredondada a ~500m com offset aleatório. Ninguém vê o ponto exato.
+          </p>
+          <button
+            type="button"
+            onClick={() => requestLocation()}
+            disabled={geoLoading}
+            className="mt-3 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {geoLoading ? "Obtendo..." : "Usar minha localização atual"}
+          </button>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Você também pode ajustar em <Link to="/settings" className="text-primary underline">Configurações</Link>.
           </p>
         </Card>
       ) : (
