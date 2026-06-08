@@ -46,18 +46,67 @@ function PublicProfile() {
     },
   });
 
-  const { data: posts } = useQuery({
-    queryKey: ["public-posts", profile?.user_id],
+  const { data: postCards } = useQuery<PostCardData[]>({
+    queryKey: ["public-posts", profile?.user_id, user?.id],
     enabled: !!profile,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: rows } = await supabase
         .from("posts")
-        .select("id, caption, post_media(url, order, kind)")
+        .select(`id, user_id, caption, nsfw, created_at, post_media(url, order, kind)`)
         .eq("user_id", profile!.user_id)
         .eq("moderation_status", "approved")
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
-      return data ?? [];
+
+      const postRows = rows ?? [];
+      if (postRows.length === 0) return [];
+
+      const ids = postRows.map((r: any) => r.id);
+      const [{ data: likes }, { data: comments }, savesRes] = await Promise.all([
+        supabase.from("likes").select("post_id, user_id").in("post_id", ids),
+        supabase.from("comments").select("post_id").in("post_id", ids),
+        user?.id
+          ? supabase.from("saves").select("post_id").eq("user_id", user.id).in("post_id", ids)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const likesMap: Record<string, number> = {};
+      const likesByMe = new Set<string>();
+      (likes ?? []).forEach((l: any) => {
+        likesMap[l.post_id] = (likesMap[l.post_id] ?? 0) + 1;
+        if (user?.id && l.user_id === user.id) likesByMe.add(l.post_id);
+      });
+
+      const commentsMap: Record<string, number> = {};
+      (comments ?? []).forEach((c: any) => {
+        commentsMap[c.post_id] = (commentsMap[c.post_id] ?? 0) + 1;
+      });
+
+      const savedByMe = new Set<string>();
+      (savesRes?.data ?? []).forEach((s: any) => savedByMe.add(s.post_id));
+
+      const author = {
+        handle: profile!.handle,
+        display_name: profile!.display_name,
+        avatar_url: profile!.avatar_url,
+        verified: profile!.verified,
+      };
+
+      return postRows.map((r: any) => ({
+        id: r.id,
+        user_id: r.user_id,
+        caption: r.caption,
+        nsfw: r.nsfw,
+        created_at: r.created_at,
+        author,
+        media: (r.post_media ?? [])
+          .sort((a: any, b: any) => a.order - b.order)
+          .map((m: any) => ({ url: m.url, order: m.order, kind: m.kind })),
+        likes_count: likesMap[r.id] ?? 0,
+        liked_by_me: likesByMe.has(r.id),
+        saved_by_me: savedByMe.has(r.id),
+        comments_count: commentsMap[r.id] ?? 0,
+      }));
     },
   });
 
