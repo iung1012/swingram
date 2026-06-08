@@ -44,25 +44,48 @@ function PublicProfile() {
     },
   });
 
-  const { data: followState } = useQuery({
-    queryKey: ["follow", user?.id, profile?.user_id],
-    enabled: !!user && !!profile && user.id !== profile.user_id,
+  const { data: stats } = useQuery({
+    queryKey: ["profile-stats", profile?.user_id],
+    enabled: !!profile,
     queryFn: async () => {
-      const [mine, counts] = await Promise.all([
-        supabase
-          .from("follows")
-          .select("follower_id")
-          .eq("follower_id", user!.id)
-          .eq("followee_id", profile!.user_id)
-          .maybeSingle(),
+      const [followersRes, postIdsRes] = await Promise.all([
         supabase
           .from("follows")
           .select("follower_id", { count: "exact", head: true })
           .eq("followee_id", profile!.user_id),
+        supabase
+          .from("posts")
+          .select("id")
+          .eq("user_id", profile!.user_id)
+          .is("deleted_at", null),
       ]);
-      return { following: !!mine.data, followers: counts.count ?? 0 };
+      const ids = (postIdsRes.data ?? []).map((p: any) => p.id);
+      let likes = 0;
+      if (ids.length) {
+        const { count } = await supabase
+          .from("likes")
+          .select("post_id", { count: "exact", head: true })
+          .in("post_id", ids);
+        likes = count ?? 0;
+      }
+      return { followers: followersRes.count ?? 0, likes };
     },
   });
+
+  const { data: followState } = useQuery({
+    queryKey: ["follow", user?.id, profile?.user_id],
+    enabled: !!user && !!profile && user.id !== profile.user_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("follows")
+        .select("follower_id")
+        .eq("follower_id", user!.id)
+        .eq("followee_id", profile!.user_id)
+        .maybeSingle();
+      return { following: !!data };
+    },
+  });
+
 
   async function toggleFollow() {
     if (!user || !profile) return;
