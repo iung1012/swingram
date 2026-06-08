@@ -50,10 +50,12 @@ export function PostCard({
   post,
   currentUserId,
   defaultBlur,
+  commentsAsDialog,
 }: {
   post: PostCardData;
   currentUserId: string | null;
   defaultBlur: boolean;
+  commentsAsDialog?: boolean;
 }) {
   const qc = useQueryClient();
   const [liked, setLiked] = useState(post.liked_by_me);
