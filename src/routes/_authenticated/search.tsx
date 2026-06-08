@@ -9,6 +9,7 @@ import { SignedImage } from "@/components/signed-image";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { Search as SearchIcon, ChevronRight, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SpiralLoaderBlock } from "@/components/spiral-loader";
 
 export const Route = createFileRoute("/_authenticated/search")({
   ssr: false,
