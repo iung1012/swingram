@@ -239,7 +239,7 @@ function Feed({
   } = useInfiniteQuery({
     queryKey: ["feed", mode, userId, interestsKey],
     initialPageParam: null as string | null,
-    getNextPageParam: (last) => last.nextCursor,
+    getNextPageParam: (last: { items: PostCardData[]; nextCursor: string | null }) => last.nextCursor,
     queryFn: ({ pageParam }) => fetchFeedPage(userId, mode, interests, pageParam),
   });
 
