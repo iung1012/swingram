@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SignedImage } from "@/components/signed-image";
@@ -20,8 +20,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2, Heart, Users, MoreVertical } from "lucide-react";
+import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2, Heart, Users, MoreVertical, Eye } from "lucide-react";
 
+
+function formatCompact(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return (n / 1000).toFixed(n < 10_000 ? 1 : 0).replace(/\.0$/, "") + "k";
+  return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+}
 
 export const Route = createFileRoute("/_authenticated/u/$handle")({
   ssr: false,
@@ -115,7 +121,7 @@ function PublicProfile() {
     queryKey: ["profile-stats", profile?.user_id],
     enabled: !!profile,
     queryFn: async () => {
-      const [followersRes, postIdsRes] = await Promise.all([
+      const [followersRes, postIdsRes, viewsRes] = await Promise.all([
         supabase
           .from("follows")
           .select("follower_id", { count: "exact", head: true })
@@ -125,6 +131,10 @@ function PublicProfile() {
           .select("id")
           .eq("user_id", profile!.user_id)
           .is("deleted_at", null),
+        supabase
+          .from("profile_views")
+          .select("profile_id", { count: "exact", head: true })
+          .eq("profile_id", profile!.user_id),
       ]);
       const ids = (postIdsRes.data ?? []).map((p: any) => p.id);
       let likes = 0;
@@ -135,9 +145,19 @@ function PublicProfile() {
           .in("post_id", ids);
         likes = count ?? 0;
       }
-      return { followers: followersRes.count ?? 0, likes };
+      return { followers: followersRes.count ?? 0, likes, views: viewsRes.count ?? 0 };
     },
   });
+
+  useEffect(() => {
+    if (!user || !profile || user.id === profile.user_id) return;
+    supabase
+      .from("profile_views")
+      .insert({ profile_id: profile.user_id, viewer_id: user.id })
+      .then(({ error }) => {
+        if (!error) qc.invalidateQueries({ queryKey: ["profile-stats", profile.user_id] });
+      });
+  }, [user?.id, profile?.user_id]);
 
   const { data: followState } = useQuery({
     queryKey: ["follow", user?.id, profile?.user_id],
@@ -319,21 +339,26 @@ function PublicProfile() {
             </div>
           )}
 
-          <div className="mt-4 flex items-center gap-5 border-t border-border/60 pt-3 text-[12px]">
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/60 pt-3 text-[12px]">
             <div className="flex items-center gap-1.5">
               <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
-              <span className="font-semibold tabular-nums">{(postCards ?? []).length}</span>
+              <span className="font-semibold tabular-nums">{formatCompact((postCards ?? []).length)}</span>
               <span className="text-muted-foreground">posts</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Users className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
-              <span className="font-semibold tabular-nums">{stats?.followers ?? 0}</span>
+              <span className="font-semibold tabular-nums">{formatCompact(stats?.followers ?? 0)}</span>
               <span className="text-muted-foreground">seguidores</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Heart className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
-              <span className="font-semibold tabular-nums">{stats?.likes ?? 0}</span>
+              <span className="font-semibold tabular-nums">{formatCompact(stats?.likes ?? 0)}</span>
               <span className="text-muted-foreground">curtidas</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Eye className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+              <span className="font-semibold tabular-nums">{formatCompact(stats?.views ?? 0)}</span>
+              <span className="text-muted-foreground">visitas</span>
             </div>
           </div>
 
