@@ -8,6 +8,7 @@ import { SignedImage } from "@/components/signed-image";
 import { SignedMedia } from "@/components/signed-media";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
+import { PostCard, type PostCardData } from "@/components/post-card";
 import { toast } from "sonner";
 import {
   Settings,
@@ -16,7 +17,6 @@ import {
   Heart,
   MapPin,
   ChevronRight,
-  Grid3x3,
   Sparkles,
   Camera,
   ImagePlus,
@@ -25,6 +25,7 @@ import {
   X,
   Bookmark,
 } from "lucide-react";
+
 
 
 
