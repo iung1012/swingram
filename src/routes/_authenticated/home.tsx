@@ -115,6 +115,9 @@ function Home() {
         </h1>
       </header>
 
+      <StoriesRail />
+
+
       <form onSubmit={submitSearch} className="mb-3">
         <label className="flex h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 transition-colors focus-within:border-foreground/25">
           <Search className="h-4 w-4 text-muted-foreground" strokeWidth={2.2} />
