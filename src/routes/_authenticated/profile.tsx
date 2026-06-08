@@ -9,6 +9,8 @@ import { SignedMedia } from "@/components/signed-media";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { PostCard, type PostCardData } from "@/components/post-card";
+import { ZoomPostContent } from "@/components/zoom-post-content";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   Settings,
@@ -47,6 +49,7 @@ function MyProfile() {
   const [bioDraft, setBioDraft] = useState("");
   const [savingBio, setSavingBio] = useState(false);
   const [tab, setTab] = useState<"posts" | "photos">("posts");
+  const [zoomPost, setZoomPost] = useState<{ id: string; url: string | null; kind: "image" | "video" | "text"; caption: string } | null>(null);
 
 
   async function saveBio() {
@@ -462,11 +465,18 @@ function MyProfile() {
                 const first = p.media[0];
                 const kind = (first?.kind ?? "image") as "image" | "video";
                 return (
-                  <Link
+                  <button
+                    type="button"
                     key={p.id}
-                    to={"/post/$id" as never}
-                    params={{ id: p.id } as never}
-                    className="group relative overflow-hidden rounded-lg border border-border bg-card"
+                    onClick={() =>
+                      setZoomPost({
+                        id: p.id,
+                        url: first?.url ?? null,
+                        kind: kind as "image" | "video" | "text",
+                        caption: p.caption ?? "",
+                      })
+                    }
+                    className="group relative overflow-hidden rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <SignedMedia
                       bucket="posts"
@@ -487,12 +497,27 @@ function MyProfile() {
                         {p.moderation_status === "pending" ? "Análise" : "Rejeitado"}
                       </span>
                     )}
-                  </Link>
+                  </button>
                 );
               })}
           </div>
         )}
       </section>
+
+      <Dialog open={!!zoomPost} onOpenChange={(o) => !o && setZoomPost(null)}>
+        <DialogContent className="flex h-[92vh] max-h-[92vh] w-[96vw] max-w-3xl flex-col overflow-hidden border-border bg-card p-0 sm:h-[88vh] sm:max-h-[88vh]">
+          <DialogTitle className="sr-only">Visualizar post</DialogTitle>
+          {zoomPost && (
+            <ZoomPostContent
+              postId={zoomPost.id}
+              url={zoomPost.url}
+              kind={zoomPost.kind}
+              caption={zoomPost.caption}
+              currentUserId={user?.id ?? null}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
