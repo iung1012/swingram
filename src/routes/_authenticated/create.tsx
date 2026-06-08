@@ -494,21 +494,39 @@ function CreatePost() {
 
         {/* CAPTION */}
         <div className="border-b border-border p-4">
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex items-center justify-between gap-2">
             <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Descrição
             </span>
-            <span
-              className={`text-[11px] tabular-nums ${
-                pct >= 95
-                  ? "text-destructive"
-                  : pct >= 80
-                    ? "text-amber-500"
-                    : "text-muted-foreground"
-              }`}
-            >
-              {caption.length} / {MAX_CAPTION}
-            </span>
+            <div className="flex items-center gap-2">
+              {draftSavedAt && (
+                <span className="text-[11px] text-muted-foreground">
+                  Rascunho salvo {formatSavedAt(draftSavedAt)}
+                </span>
+              )}
+              {caption.length > 0 && (
+                <button
+                  type="button"
+                  onClick={discardDraft}
+                  className="inline-flex items-center gap-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
+                  aria-label="Descartar rascunho"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Descartar
+                </button>
+              )}
+              <span
+                className={`text-[11px] tabular-nums ${
+                  pct >= 95
+                    ? "text-destructive"
+                    : pct >= 80
+                      ? "text-amber-500"
+                      : "text-muted-foreground"
+                }`}
+              >
+                {caption.length} / {MAX_CAPTION}
+              </span>
+            </div>
           </div>
           <Textarea
             ref={textareaRef}
