@@ -378,28 +378,34 @@ export type Database = {
       }
       messages: {
         Row: {
-          body: string
+          body: string | null
           conversation_id: string
           created_at: string
           id: string
+          media_kind: string | null
+          media_path: string | null
           read_at: string | null
           sender_id: string
           status: Database["public"]["Enums"]["message_status"]
         }
         Insert: {
-          body: string
+          body?: string | null
           conversation_id: string
           created_at?: string
           id?: string
+          media_kind?: string | null
+          media_path?: string | null
           read_at?: string | null
           sender_id: string
           status?: Database["public"]["Enums"]["message_status"]
         }
         Update: {
-          body?: string
+          body?: string | null
           conversation_id?: string
           created_at?: string
           id?: string
+          media_kind?: string | null
+          media_path?: string | null
           read_at?: string | null
           sender_id?: string
           status?: Database["public"]["Enums"]["message_status"]
@@ -1000,6 +1006,10 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      mark_messages_read: {
+        Args: { p_conversation_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "support" | "user"
