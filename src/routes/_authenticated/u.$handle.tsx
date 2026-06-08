@@ -1,13 +1,22 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SignedImage } from "@/components/signed-image";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { ReportDialog } from "@/components/report-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2, Heart, Users } from "lucide-react";
+import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2, Heart, Users, MoreVertical } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/u/$handle")({
   ssr: false,
