@@ -83,7 +83,7 @@ export function ZoomPostContent({
       if (ids.length) {
         const { data: ps } = await supabase
           .from("profiles")
-          .select("user_id, handle, display_name, avatar_url")
+          .select("user_id, handle, display_name, avatar_url, verified")
           .in("user_id", ids);
         profilesMap = new Map((ps ?? []).map((p: any) => [p.user_id, p]));
       }
