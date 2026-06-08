@@ -124,6 +124,7 @@ function Settings() {
             Sua conta e dados serão removidos. Toque para iniciar a contagem de 10s — toque novamente para cancelar.
           </p>
           <DeleteAccountButton onConfirm={deleteAccount} />
+        </div>
       </Group>
 
       <p className="mt-8 text-center text-[11px] text-muted-foreground">Brasa Swing · v1.0</p>
