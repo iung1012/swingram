@@ -23,11 +23,10 @@ const PAGE_SIZE = 12;
 
 async function fetchFollowingIds(userId: string): Promise<string[]> {
   const { data } = await supabase
-    .from("interests_sent")
-    .select("to_user")
-    .eq("from_user", userId)
-    .eq("status", "accepted");
-  return (data ?? []).map((r) => r.to_user);
+    .from("follows")
+    .select("followee_id")
+    .eq("follower_id", userId);
+  return (data ?? []).map((r) => r.followee_id);
 }
 
 async function fetchFeedPage(
