@@ -355,7 +355,7 @@ function PublicProfile() {
                 <button
                   type="button"
                   key={p.id}
-                  onClick={() => first?.url && setZoomPath(first.url)}
+                  onClick={() => first?.url && setZoomPost({ id: p.id, url: first.url, caption: p.caption ?? "" })}
                   className="overflow-hidden rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <SignedImage
