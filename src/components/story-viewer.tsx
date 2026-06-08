@@ -5,6 +5,7 @@ import { motion, AnimatePresence, type PanInfo } from "framer-motion";
 import { X, ChevronLeft, ChevronRight, Pause, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SpiralLoader } from "@/components/spiral-loader";
+import { SignedImage } from "@/components/signed-image";
 
 export interface Story {
   id: string;
