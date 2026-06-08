@@ -662,6 +662,22 @@ function CreatePost() {
   );
 }
 
+function formatSavedAt(ts: number): string {
+  const diff = Math.max(0, Date.now() - ts);
+  const s = Math.floor(diff / 1000);
+  if (s < 5) return "agora";
+  if (s < 60) return `há ${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `há ${m}min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `há ${h}h`;
+  try {
+    return new Date(ts).toLocaleDateString("pt-BR");
+  } catch {
+    return "";
+  }
+}
+
 function renderCaption(text: string): {
   hasHighlight: boolean;
   nodes: React.ReactNode;
