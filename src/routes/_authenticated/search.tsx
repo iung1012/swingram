@@ -107,9 +107,7 @@ function Search() {
 
       <section className="mt-2.5 overflow-hidden rounded-2xl border border-border bg-card">
         {isLoading ? (
-          <div className="px-3 py-10 text-center text-[13px] text-muted-foreground">
-            Carregando…
-          </div>
+          <SpiralLoaderBlock />
         ) : !results || results.length === 0 ? (
           <div className="px-3 py-10 text-center text-[13px] text-muted-foreground">
             Nenhum resultado.
