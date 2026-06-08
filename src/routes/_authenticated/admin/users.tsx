@@ -13,7 +13,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/users")({
   ssr: false,
-  beforeLoad: requireAdmin,
+  beforeLoad: () => requireAdmin(),
   component: UsersAdmin,
 });
 

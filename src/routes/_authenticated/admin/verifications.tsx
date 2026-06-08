@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/admin/verifications")({
   ssr: false,
-  beforeLoad: requireAdmin,
+  beforeLoad: () => requireAdmin(),
   component: VerificationsAdmin,
 });
 
