@@ -7,7 +7,7 @@ import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { ReportDialog } from "@/components/report-dialog";
 import { toast } from "sonner";
-import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2 } from "lucide-react";
+import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2, Heart, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/u/$handle")({
   ssr: false,
