@@ -50,7 +50,7 @@ function PublicProfile() {
     queryFn: async () => {
       const { data } = await supabase
         .from("posts")
-        .select("id, caption, post_media(url, order)")
+        .select("id, caption, post_media(url, order, kind)")
         .eq("user_id", profile!.user_id)
         .eq("moderation_status", "approved")
         .is("deleted_at", null)
