@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PostCard, type PostCardData } from "@/components/post-card";
 import { Flame, Search } from "lucide-react";
 import { SpiralLoaderBlock } from "@/components/spiral-loader";
+import { StoriesRail } from "@/components/stories-rail";
 
 export const Route = createFileRoute("/_authenticated/home")({
   ssr: false,
