@@ -352,22 +352,38 @@ function PublicProfile() {
             {posts.map((p: any) => {
               const first = (p.post_media ?? []).sort((a: any, b: any) => a.order - b.order)[0];
               return (
-                <div
+                <button
+                  type="button"
                   key={p.id}
-                  className="overflow-hidden rounded-lg border border-border"
+                  onClick={() => first?.url && setZoomPath(first.url)}
+                  className="overflow-hidden rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <SignedImage
                     bucket="posts"
                     path={first?.url}
                     alt=""
-                    className="aspect-square w-full object-cover"
+                    className="aspect-square w-full object-cover transition-transform hover:scale-105"
                   />
-                </div>
+                </button>
               );
             })}
           </div>
         )}
       </section>
+
+      <Dialog open={!!zoomPath} onOpenChange={(o) => !o && setZoomPath(null)}>
+        <DialogContent className="max-w-3xl border-none bg-transparent p-0 shadow-none">
+          <DialogTitle className="sr-only">Visualizar post</DialogTitle>
+          {zoomPath && (
+            <SignedImage
+              bucket="posts"
+              path={zoomPath}
+              alt=""
+              className="h-auto max-h-[85vh] w-full rounded-lg object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
