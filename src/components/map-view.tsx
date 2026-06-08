@@ -1,3 +1,4 @@
+import type { Feature as GJFeature, Point } from "geojson";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import maplibregl from "maplibre-gl";
@@ -28,7 +29,7 @@ type NearbyProfile = {
 
 type SelectedProfile = NearbyProfile & { km: number };
 
-type Feature = GeoJSON.Feature<GeoJSON.Point, NearbyProfile>;
+type Feature = GJFeature<Point, NearbyProfile>;
 
 // region cache: avoid refetching same area repeatedly
 const regionCache = new Map<string, { ts: number; rows: NearbyProfile[] }>();
@@ -210,7 +211,7 @@ export default function MapView() {
         const clusterId = (feat.properties as any)?.cluster_id;
         const src = map.getSource(SRC_ID) as maplibregl.GeoJSONSource;
         src.getClusterExpansionZoom(clusterId).then((zoom) => {
-          const coords = (feat.geometry as GeoJSON.Point).coordinates as [number, number];
+          const coords = (feat.geometry as Point).coordinates as [number, number];
           map.easeTo({ center: coords, zoom: zoom + 0.001, duration: 500 });
         }).catch(() => {});
       });
@@ -235,7 +236,7 @@ export default function MapView() {
           ? distanceKm({ lat: me.lat_snap, lng: me.lng_snap }, { lat: profile.lat_snap, lng: profile.lng_snap })
           : 0;
         setSelected({ ...profile, km });
-        const coords = (feat.geometry as GeoJSON.Point).coordinates as [number, number];
+        const coords = (feat.geometry as Point).coordinates as [number, number];
         map.easeTo({ center: coords, duration: 350 });
       });
 
