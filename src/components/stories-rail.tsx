@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
 import { toast } from "sonner";
 import { StoryViewer, StoryRingButton, type Story } from "@/components/story-viewer";
+import { SignedImage } from "@/components/signed-image";
 
 type Row = {
   id: string;
@@ -191,7 +192,7 @@ export function StoriesRail() {
             <span className="absolute inset-0 rounded-full border border-dashed border-border" />
             <span className="absolute inset-[6px] flex items-center justify-center rounded-full bg-secondary ring-2 ring-background">
               {me?.avatar_url ? (
-                <img src={me.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
+                <SignedImage bucket="avatars" path={me.avatar_url} alt="" className="h-full w-full rounded-full object-cover" />
               ) : (
                 <span className="text-[10px] uppercase text-muted-foreground">eu</span>
               )}

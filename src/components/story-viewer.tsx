@@ -5,6 +5,7 @@ import { motion, AnimatePresence, type PanInfo } from "framer-motion";
 import { X, ChevronLeft, ChevronRight, Pause, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SpiralLoader } from "@/components/spiral-loader";
+import { SignedImage } from "@/components/signed-image";
 
 export interface Story {
   id: string;
@@ -200,7 +201,7 @@ export function StoryViewer({
         {/* Header */}
         <div className="absolute left-3 right-3 top-6 z-30 flex items-center gap-3">
           {avatar ? (
-            <img src={avatar} alt="" className="h-8 w-8 rounded-full object-cover ring-2 ring-white/70" />
+            <SignedImage bucket="avatars" path={avatar} alt="" className="h-8 w-8 rounded-full object-cover ring-2 ring-white/70" />
           ) : (
             <div className="h-8 w-8 rounded-full bg-white/20" />
           )}
@@ -373,7 +374,7 @@ export function StoryRingButton({
         </svg>
         <span className="absolute inset-[6px] overflow-hidden rounded-full bg-secondary ring-2 ring-background">
           {avatar ? (
-            <img src={avatar} alt="" className="h-full w-full object-cover" />
+            <SignedImage bucket="avatars" path={avatar} alt="" className="h-full w-full object-cover" />
           ) : (
             <span className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase text-muted-foreground">
               {label.slice(0, 2)}
