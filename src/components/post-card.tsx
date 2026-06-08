@@ -75,7 +75,7 @@ export function PostCard({ post, currentUserId, defaultBlur }: { post: PostCardD
   return (
     <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <header className="flex items-center justify-between gap-2 p-3">
-        <Link to="/u/$handle" params={{ handle: post.author.handle }} className="flex items-center gap-2 group">
+        <Link to={"/u/$handle" as never} params={{ handle: post.author.handle } as never} className="flex items-center gap-2 group">
           <SignedImage
             bucket="avatars"
             path={post.author.avatar_url}
