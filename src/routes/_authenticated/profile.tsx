@@ -503,6 +503,21 @@ function MyProfile() {
           </div>
         )}
       </section>
+
+      <Dialog open={!!zoomPost} onOpenChange={(o) => !o && setZoomPost(null)}>
+        <DialogContent className="flex h-[92vh] max-h-[92vh] w-[96vw] max-w-3xl flex-col overflow-hidden border-border bg-card p-0 sm:h-[88vh] sm:max-h-[88vh]">
+          <DialogTitle className="sr-only">Visualizar post</DialogTitle>
+          {zoomPost && (
+            <ZoomPostContent
+              postId={zoomPost.id}
+              url={zoomPost.url}
+              kind={zoomPost.kind}
+              caption={zoomPost.caption}
+              currentUserId={user?.id ?? null}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
