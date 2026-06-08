@@ -178,7 +178,7 @@ function Feed({ mode, userId, interests, defaultBlur }: { mode: FeedMode; userId
   }
   return (
     <div className="space-y-4 pt-3">
-      {data.map((p) => <PostCard key={p.id} post={p} currentUserId={userId} defaultBlur={defaultBlur} />)}
+      {data.map((p) => <PostCard key={p.id} post={p} currentUserId={userId} defaultBlur={defaultBlur} commentsAsDialog />)}
     </div>
   );
 }

@@ -50,10 +50,12 @@ export function PostCard({
   post,
   currentUserId,
   defaultBlur,
+  commentsAsDialog,
 }: {
   post: PostCardData;
   currentUserId: string | null;
   defaultBlur: boolean;
+  commentsAsDialog?: boolean;
 }) {
   const qc = useQueryClient();
   const [liked, setLiked] = useState(post.liked_by_me);
@@ -62,6 +64,7 @@ export function PostCard({
   const [revealed, setRevealed] = useState(!post.nsfw || !defaultBlur);
   const [active, setActive] = useState(0);
   const [showComments, setShowComments] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [likesOpen, setLikesOpen] = useState(false);
@@ -73,7 +76,7 @@ export function PostCard({
 
   const { data: comments } = useQuery({
     queryKey: ["post-comments", post.id, currentUserId],
-    enabled: showComments,
+    enabled: showComments || commentsOpen,
     queryFn: async () => {
       const { data: cs } = await supabase
         .from("comments")
@@ -359,16 +362,31 @@ export function PostCard({
               </div>
             </DialogContent>
           </Dialog>
-          <button
-            type="button"
-            onClick={() => setShowComments((v) => !v)}
-            aria-label="Comentários"
-            aria-expanded={showComments}
-            className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
-          >
-            <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
-            {comments?.length ?? post.comments_count}
-          </button>
+          {commentsAsDialog ? (
+            <Dialog open={commentsOpen} onOpenChange={setCommentsOpen}>
+              <DialogTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Comentários"
+                  className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+                >
+                  <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
+                  {comments?.length ?? post.comments_count}
+                </button>
+              </DialogTrigger>
+            </Dialog>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowComments((v) => !v)}
+              aria-label="Comentários"
+              aria-expanded={showComments}
+              className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+            >
+              <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
+              {comments?.length ?? post.comments_count}
+            </button>
+          )}
         </div>
         <button
           onClick={toggleSave}
@@ -394,7 +412,7 @@ export function PostCard({
           {renderCaption(post.caption)}
         </p>
       )}
-      {showComments && (
+      {!commentsAsDialog && showComments && (
         <div className="border-t border-border">
           <div className="max-h-72 space-y-3 overflow-y-auto px-3 py-3">
             {(comments ?? []).length === 0 ? (
@@ -497,6 +515,115 @@ export function PostCard({
             </button>
           </form>
         </div>
+      )}
+      {commentsAsDialog && (
+        <Dialog open={commentsOpen} onOpenChange={setCommentsOpen}>
+          <DialogContent className="max-h-[85vh] overflow-hidden p-0 sm:max-w-md">
+            <DialogHeader className="px-5 pt-5 pb-3">
+              <DialogTitle className="text-[15px]">Comentários</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-[60vh] space-y-3 overflow-y-auto px-5 pb-3">
+              {(comments ?? []).length === 0 ? (
+                <p className="text-center text-[12px] text-muted-foreground">
+                  {comments ? "Seja o primeiro a comentar." : "Carregando…"}
+                </p>
+              ) : (
+                (comments ?? []).map((c: any) => {
+                  const isOwn = c.user_id === currentUserId;
+                  const canDelete = isOwn || post.user_id === currentUserId;
+                  return (
+                    <div key={c.id} className="flex gap-2.5">
+                      <VerifiedAvatar
+                        bucket="avatars"
+                        path={c.profile?.avatar_url}
+                        alt={c.profile?.display_name ?? ""}
+                        verified={false}
+                        className="h-7 w-7 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px]">
+                          <span className="font-semibold">@{c.profile?.handle ?? "user"}</span>{" "}
+                          <span className="text-foreground/90">{c.body}</span>
+                        </p>
+                        <div className="mt-0.5 flex items-center gap-3 text-[11px] text-muted-foreground">
+                          <button
+                            type="button"
+                            onClick={() => toggleCommentLike(c.id, c.liked_by_me)}
+                            disabled={!currentUserId}
+                            className="inline-flex items-center gap-1 hover:text-foreground disabled:opacity-50"
+                            aria-label={c.liked_by_me ? "Descurtir" : "Curtir"}
+                          >
+                            <Heart
+                              className={`h-3 w-3 ${c.liked_by_me ? "fill-primary text-primary" : ""}`}
+                              strokeWidth={2.2}
+                            />
+                            {c.likes > 0 && c.likes}
+                          </button>
+                          {c.liked_by_author && c.user_id !== post.user_id && (
+                            <span className="text-primary">Curtido pelo autor</span>
+                          )}
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="Mais"
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                          >
+                            <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={2.2} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {canDelete && (
+                            <DropdownMenuItem
+                              onSelect={() => deleteComment(c.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-3.5 w-3.5" /> Apagar comentário
+                            </DropdownMenuItem>
+                          )}
+                          {!isOwn && (
+                            <ReportDialog
+                              targetType="comment"
+                              targetId={c.id}
+                              trigger={
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                  Denunciar como spam
+                                </DropdownMenuItem>
+                              }
+                            />
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <form
+              onSubmit={submitComment}
+              className="flex items-center gap-2 border-t border-border bg-card/95 px-5 py-3"
+            >
+              <input
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder={currentUserId ? "Adicione um comentário…" : "Faça login para comentar"}
+                disabled={!currentUserId || sending}
+                maxLength={500}
+                className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                type="submit"
+                disabled={!currentUserId || sending || !body.trim()}
+                className="rounded-md px-3 py-2 text-[13px] font-medium text-primary-foreground disabled:opacity-50"
+                style={{ background: "var(--gradient-brasa-h)" }}
+              >
+                Enviar
+              </button>
+            </form>
+          </DialogContent>
+        </Dialog>
       )}
     </article>
   );
