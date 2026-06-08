@@ -29,6 +29,8 @@ function PublicProfile() {
   const { user } = useAuth();
   const nav = useNavigate();
   const qc = useQueryClient();
+  const [reportOpen, setReportOpen] = useState(false);
+
 
   const { data: profile } = useQuery({
     queryKey: ["profile-handle", handle],
