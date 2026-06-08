@@ -2,12 +2,10 @@ import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { computeAge } from "@/lib/age";
-import { BrasaLogo, BrasaWordmark } from "@/components/brasa-logo";
-import { Mail, Lock, Calendar, ArrowRight } from "lucide-react";
+import { BrasaLogo } from "@/components/brasa-logo";
+import { ArrowRight } from "lucide-react";
 import { SpiralLoader } from "@/components/spiral-loader";
 
 export const Route = createFileRoute("/auth")({
@@ -15,6 +13,7 @@ export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Entrar — Brasa Swing" }] }),
   component: AuthPage,
 });
+
 
 function AuthPage() {
   const nav = useNavigate();
