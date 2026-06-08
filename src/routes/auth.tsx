@@ -141,7 +141,7 @@ function AuthPage() {
             style={{ background: "var(--gradient-brasa-h)" }}
           >
             <span className="relative z-10 inline-flex items-center justify-center gap-2">
-              {loading ? "Carregando..." : mode === "login" ? "Entrar" : "Criar conta +18"}
+              {loading ? <SpiralLoader size={18} /> : (mode === "login" ? "Entrar" : "Criar conta +18")}
               <ArrowRight className="h-5 w-5 transition group-hover:translate-x-0.5" />
             </span>
           </Button>
