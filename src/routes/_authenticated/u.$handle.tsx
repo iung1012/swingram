@@ -392,40 +392,58 @@ function PublicProfile() {
         <div className="mb-2.5 flex items-center justify-between px-1">
           <h2 className="inline-flex items-center gap-1.5 text-[13px] font-semibold tracking-tight">
             <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
-            Posts
+            Postagens
           </h2>
-          <span className="text-[11px] text-muted-foreground">{(posts ?? []).length}</span>
+          <span className="text-[11px] text-muted-foreground">{(postCards ?? []).length}</span>
         </div>
-        {!posts || posts.length === 0 ? (
+        {!postCards || postCards.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/40 px-4 py-10 text-center">
             <p className="text-[13px] text-muted-foreground">Nenhum post publicado.</p>
           </div>
         ) : (
+          <div className="space-y-4">
+            {postCards.map((p) => (
+              <PostCard key={p.id} post={p} currentUserId={user?.id ?? null} defaultBlur={false} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <div className="mb-2.5 flex items-center justify-between px-1">
+          <h2 className="inline-flex items-center gap-1.5 text-[13px] font-semibold tracking-tight">
+            <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+            Fotos
+          </h2>
+          <span className="text-[11px] text-muted-foreground">
+            {(postCards ?? []).filter((p) => p.media.length > 0).length}
+          </span>
+        </div>
+        {!postCards || postCards.filter((p) => p.media.length > 0).length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/40 px-4 py-10 text-center">
+            <p className="text-[13px] text-muted-foreground">Nenhuma foto ou vídeo publicado.</p>
+          </div>
+        ) : (
           <div className="grid grid-cols-3 gap-1.5">
-            {posts.map((p: any) => {
-              const first = (p.post_media ?? []).sort((a: any, b: any) => a.order - b.order)[0];
-              const kind: "image" | "video" | "text" = first ? first.kind ?? "image" : "text";
-              return (
-                <button
-                  type="button"
-                  key={p.id}
-                  onClick={() =>
-                    setZoomPost({
-                      id: p.id,
-                      url: first?.url ?? null,
-                      kind,
-                      caption: p.caption ?? "",
-                    })
-                  }
-                  className="group relative overflow-hidden rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  {kind === "text" ? (
-                    <div className="flex aspect-square w-full items-center justify-center bg-secondary/40 p-2">
-                      <p className="line-clamp-5 text-center text-[11px] leading-snug text-foreground/90">
-                        {p.caption || "(sem texto)"}
-                      </p>
-                    </div>
-                  ) : (
+            {postCards
+              .filter((p) => p.media.length > 0)
+              .map((p) => {
+                const first = p.media[0];
+                const kind = first?.kind ?? "image";
+                return (
+                  <button
+                    type="button"
+                    key={p.id}
+                    onClick={() =>
+                      setZoomPost({
+                        id: p.id,
+                        url: first?.url ?? null,
+                        kind: kind as "image" | "video" | "text",
+                        caption: p.caption ?? "",
+                      })
+                    }
+                    className="group relative overflow-hidden rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
                     <SignedMedia
                       bucket="posts"
                       path={first?.url}
@@ -435,15 +453,14 @@ function PublicProfile() {
                       muted
                       className="aspect-square w-full object-cover transition-transform group-hover:scale-105"
                     />
-                  )}
-                  {kind === "video" && (
-                    <span className="pointer-events-none absolute right-1.5 top-1.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur">
-                      ▶ vídeo
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                    {kind === "video" && (
+                      <span className="pointer-events-none absolute right-1.5 top-1.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur">
+                        ▶ vídeo
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
           </div>
         )}
       </section>
