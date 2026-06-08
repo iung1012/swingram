@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FireLike } from "./fire-like";
@@ -46,6 +47,7 @@ export function PostCard({
   currentUserId: string | null;
   defaultBlur: boolean;
 }) {
+  const qc = useQueryClient();
   const [liked, setLiked] = useState(post.liked_by_me);
   const [likes, setLikes] = useState(post.likes_count);
   const [saved, setSaved] = useState(post.saved_by_me);
@@ -55,6 +57,7 @@ export function PostCard({
   const current = post.media[active];
 
   useEffect(() => setRevealed(!post.nsfw || !defaultBlur), [post.nsfw, defaultBlur]);
+  useEffect(() => { setLiked(post.liked_by_me); setLikes(post.likes_count); }, [post.liked_by_me, post.likes_count]);
 
   async function toggleLike() {
     if (!currentUserId) return;
@@ -63,6 +66,13 @@ export function PostCard({
     setLikes((l) => l + (next ? 1 : -1));
     if (next) await supabase.from("likes").insert({ post_id: post.id, user_id: currentUserId });
     else await supabase.from("likes").delete().eq("post_id", post.id).eq("user_id", currentUserId);
+    qc.setQueryData(["post-likes", post.id, currentUserId], {
+      likes: likes + (next ? 1 : -1),
+      likedByMe: next,
+    });
+    qc.invalidateQueries({ queryKey: ["post-likes", post.id] });
+    qc.invalidateQueries({ queryKey: ["feed"] });
+    qc.invalidateQueries({ queryKey: ["profile-stats"] });
   }
 
   async function toggleSave() {
