@@ -285,7 +285,7 @@ function CreatePost() {
       }
 
       toast.success(
-        hasMedia ? "Enviado. Aguardando aprovação da moderação." : "Publicado",
+        hasMedia && !isVerified ? "Enviado. Aguardando aprovação da moderação." : "Publicado",
       );
       clearDraft();
       qc.invalidateQueries({ queryKey: ["feed"] });
