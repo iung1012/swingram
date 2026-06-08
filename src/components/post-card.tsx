@@ -148,16 +148,16 @@ export function PostCard({
       const list = hasMore ? rows.slice(0, COMMENTS_PAGE_SIZE) : rows;
       const commentIds = list.map((c) => c.id);
       const ids = Array.from(new Set(list.map((c) => c.user_id)));
-      let profilesMap = new Map<string, { handle: string; display_name: string; avatar_url: string | null }>();
+      let profilesMap = new Map<string, { handle: string; display_name: string; avatar_url: string | null; verified: boolean }>();
       if (ids.length) {
         const { data: ps } = await supabase
           .from("profiles")
-          .select("user_id, handle, display_name, avatar_url")
+          .select("user_id, handle, display_name, avatar_url, verified")
           .in("user_id", ids);
         profilesMap = new Map(
           (ps ?? []).map((p) => [
             p.user_id,
-            { handle: p.handle, display_name: p.display_name, avatar_url: p.avatar_url },
+            { handle: p.handle, display_name: p.display_name, avatar_url: p.avatar_url, verified: !!p.verified },
           ]),
         );
       }
