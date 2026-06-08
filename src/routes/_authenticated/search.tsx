@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
@@ -31,13 +31,13 @@ import {
 import { Button } from "@/components/ui/button";
 
 const searchSchema = z.object({
-  q: fallback(z.string(), "").default(""),
+  q: z.string().catch("").default(""),
 });
 
 export const Route = createFileRoute("/_authenticated/search")({
   ssr: false,
   head: () => ({ meta: [{ title: "Buscar — Brasa Swing" }] }),
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   component: Search,
 });
 
