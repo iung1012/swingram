@@ -83,7 +83,7 @@ export function ZoomPostContent({
       if (ids.length) {
         const { data: ps } = await supabase
           .from("profiles")
-          .select("user_id, handle, display_name, avatar_url")
+          .select("user_id, handle, display_name, avatar_url, verified")
           .in("user_id", ids);
         profilesMap = new Map((ps ?? []).map((p: any) => [p.user_id, p]));
       }
@@ -166,7 +166,7 @@ export function ZoomPostContent({
                     bucket="avatars"
                     path={c.profile?.avatar_url}
                     alt={c.profile?.display_name ?? ""}
-                    verified={false}
+                    verified={!!c.profile?.verified}
                     className="h-7 w-7 shrink-0"
                   />
                   <div className="min-w-0 flex-1">

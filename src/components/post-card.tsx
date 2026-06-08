@@ -70,7 +70,7 @@ type CommentRow = {
   body: string;
   created_at: string;
   parent_id: string | null;
-  profile?: { handle: string; display_name: string; avatar_url: string | null };
+  profile?: { handle: string; display_name: string; avatar_url: string | null; verified: boolean };
   likes: number;
   liked_by_me: boolean;
   liked_by_author: boolean;
@@ -148,16 +148,16 @@ export function PostCard({
       const list = hasMore ? rows.slice(0, COMMENTS_PAGE_SIZE) : rows;
       const commentIds = list.map((c) => c.id);
       const ids = Array.from(new Set(list.map((c) => c.user_id)));
-      let profilesMap = new Map<string, { handle: string; display_name: string; avatar_url: string | null }>();
+      let profilesMap = new Map<string, { handle: string; display_name: string; avatar_url: string | null; verified: boolean }>();
       if (ids.length) {
         const { data: ps } = await supabase
           .from("profiles")
-          .select("user_id, handle, display_name, avatar_url")
+          .select("user_id, handle, display_name, avatar_url, verified")
           .in("user_id", ids);
         profilesMap = new Map(
           (ps ?? []).map((p) => [
             p.user_id,
-            { handle: p.handle, display_name: p.display_name, avatar_url: p.avatar_url },
+            { handle: p.handle, display_name: p.display_name, avatar_url: p.avatar_url, verified: !!p.verified },
           ]),
         );
       }
@@ -796,7 +796,7 @@ function CommentItem({
         bucket="avatars"
         path={c.profile?.avatar_url ?? null}
         alt={c.profile?.display_name ?? ""}
-        verified={false}
+        verified={!!c.profile?.verified}
         className={depth > 0 ? "h-6 w-6 shrink-0" : "h-7 w-7 shrink-0"}
       />
       <div className="min-w-0 flex-1">
