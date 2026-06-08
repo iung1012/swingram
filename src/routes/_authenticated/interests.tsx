@@ -76,11 +76,12 @@ function InterestsPage() {
           <div className="divide-y divide-border">
             {data.map((r: any) => (
               <div key={r.id} className="flex items-center gap-3 px-3 py-3">
-                <SignedImage
+                <VerifiedAvatar
                   bucket="avatars"
                   path={r.sender?.avatar_url}
                   alt={r.sender?.display_name}
-                  className="h-11 w-11 rounded-full object-cover ring-1 ring-border"
+                  verified={r.sender?.verified}
+                  className="h-11 w-11"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-1 truncate text-[14px] font-medium tracking-tight">
