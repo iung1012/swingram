@@ -87,18 +87,13 @@ export function PostCard({
           params={{ handle: post.author.handle } as never}
           className="group flex min-w-0 items-center gap-2.5"
         >
-          <div className="relative">
-            <div
-              className="absolute -inset-0.5 rounded-full opacity-70"
-              style={{ background: "var(--gradient-brasa-h)" }}
-            />
-            <SignedImage
-              bucket="avatars"
-              path={post.author.avatar_url}
-              alt={post.author.display_name}
-              className="relative h-9 w-9 rounded-full object-cover ring-2 ring-card"
-            />
-          </div>
+          <VerifiedAvatar
+            bucket="avatars"
+            path={post.author.avatar_url}
+            alt={post.author.display_name}
+            verified={post.author.verified}
+            className="h-9 w-9"
+          />
           <div className="min-w-0">
             <p className="flex items-center gap-1 truncate text-[13px] font-semibold tracking-tight leading-tight group-hover:underline">
               {post.author.display_name}
