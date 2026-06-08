@@ -42,9 +42,14 @@ function Search() {
   const [q, setQ] = useState("");
   const [type, setType] = useState<string>("all");
   const [radius, setRadius] = useState<string>("0");
+  const [city, setCity] = useState("");
+  const [selInterests, setSelInterests] = useState<string[]>([]);
+
+  const toggleInterest = (i: string) =>
+    setSelInterests((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
 
   const { data: results, isLoading } = useQuery({
-    queryKey: ["search", q, type, radius, me?.lat_snap, me?.lng_snap],
+    queryKey: ["search", q, type, radius, city, selInterests, me?.lat_snap, me?.lng_snap],
     queryFn: async () => {
       let query = supabase
         .from("profiles")
@@ -56,6 +61,8 @@ function Search() {
         .limit(60);
       if (q) query = query.or(`handle.ilike.%${q}%,display_name.ilike.%${q}%,city.ilike.%${q}%`);
       if (type !== "all") query = query.eq("profile_type", type as never);
+      if (city.trim()) query = query.ilike("city", `%${city.trim()}%`);
+      if (selInterests.length > 0) query = query.overlaps("interests", selInterests);
       const { data } = await query;
       let rows = (data ?? []).filter((p: any) => !p.invisible_mode);
       const r = parseInt(radius);
