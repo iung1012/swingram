@@ -166,7 +166,7 @@ export function ZoomPostContent({
                     bucket="avatars"
                     path={c.profile?.avatar_url}
                     alt={c.profile?.display_name ?? ""}
-                    verified={false}
+                    verified={!!c.profile?.verified}
                     className="h-7 w-7 shrink-0"
                   />
                   <div className="min-w-0 flex-1">
