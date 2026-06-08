@@ -387,3 +387,131 @@ function PublicProfile() {
     </div>
   );
 }
+
+function ZoomPostContent({
+  postId,
+  url,
+  caption,
+  currentUserId,
+}: {
+  postId: string;
+  url: string;
+  caption: string;
+  currentUserId: string | null;
+}) {
+  const qc = useQueryClient();
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const { data: comments } = useQuery({
+    queryKey: ["post-comments", postId],
+    queryFn: async () => {
+      const { data: cs } = await supabase
+        .from("comments")
+        .select("id, user_id, body, created_at")
+        .eq("post_id", postId)
+        .eq("status", "visible")
+        .order("created_at", { ascending: true })
+        .limit(100);
+      const ids = Array.from(new Set((cs ?? []).map((c) => c.user_id)));
+      let profilesMap = new Map<string, any>();
+      if (ids.length) {
+        const { data: ps } = await supabase
+          .from("profiles")
+          .select("user_id, handle, display_name, avatar_url")
+          .in("user_id", ids);
+        profilesMap = new Map((ps ?? []).map((p: any) => [p.user_id, p]));
+      }
+      return (cs ?? []).map((c: any) => ({ ...c, profile: profilesMap.get(c.user_id) }));
+    },
+  });
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!currentUserId) {
+      toast.error("Faça login para comentar");
+      return;
+    }
+    const text = body.trim();
+    if (!text) return;
+    setSending(true);
+    const { error } = await supabase.from("comments").insert({
+      post_id: postId,
+      user_id: currentUserId,
+      body: text,
+    });
+    setSending(false);
+    if (error) {
+      toast.error("Falha ao comentar");
+      return;
+    }
+    setBody("");
+    qc.invalidateQueries({ queryKey: ["post-comments", postId] });
+  }
+
+  return (
+    <div className="grid max-h-[85vh] grid-cols-1 overflow-hidden md:grid-cols-[1.2fr_1fr]">
+      <div className="flex items-center justify-center bg-black">
+        <SignedImage
+          bucket="posts"
+          path={url}
+          alt=""
+          className="max-h-[85vh] w-full object-contain"
+        />
+      </div>
+      <div className="flex max-h-[85vh] flex-col">
+        {caption && (
+          <div className="border-b border-border px-4 py-3 text-[14px] leading-relaxed text-foreground/90">
+            {caption}
+          </div>
+        )}
+        <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+          {(comments ?? []).length === 0 ? (
+            <p className="text-center text-[12px] text-muted-foreground">
+              Seja o primeiro a comentar.
+            </p>
+          ) : (
+            (comments ?? []).map((c: any) => (
+              <div key={c.id} className="flex gap-2.5">
+                <VerifiedAvatar
+                  bucket="avatars"
+                  path={c.profile?.avatar_url}
+                  alt={c.profile?.display_name ?? ""}
+                  verified={false}
+                  className="h-7 w-7 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px]">
+                    <span className="font-semibold">@{c.profile?.handle ?? "user"}</span>{" "}
+                    <span className="text-foreground/90">{c.body}</span>
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <form
+          onSubmit={submit}
+          className="flex items-center gap-2 border-t border-border bg-card/80 px-3 py-2"
+        >
+          <input
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder={currentUserId ? "Adicione um comentário…" : "Faça login para comentar"}
+            disabled={!currentUserId || sending}
+            maxLength={500}
+            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-primary"
+          />
+          <button
+            type="submit"
+            disabled={!currentUserId || sending || !body.trim()}
+            className="rounded-md px-3 py-2 text-[13px] font-medium text-primary-foreground disabled:opacity-50"
+            style={{ background: "var(--gradient-brasa-h)" }}
+          >
+            Enviar
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
