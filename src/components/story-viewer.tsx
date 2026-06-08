@@ -201,7 +201,7 @@ export function StoryViewer({
         {/* Header */}
         <div className="absolute left-3 right-3 top-6 z-30 flex items-center gap-3">
           {avatar ? (
-            <img src={avatar} alt="" className="h-8 w-8 rounded-full object-cover ring-2 ring-white/70" />
+            <SignedImage bucket="avatars" path={avatar} alt="" className="h-8 w-8 rounded-full object-cover ring-2 ring-white/70" />
           ) : (
             <div className="h-8 w-8 rounded-full bg-white/20" />
           )}
