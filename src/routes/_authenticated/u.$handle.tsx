@@ -4,11 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SignedImage } from "@/components/signed-image";
 import { VerifiedBadge } from "@/components/verified-badge";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { ReportDialog } from "@/components/report-dialog";
 import { toast } from "sonner";
-import { MessageCircle, Flame, Ban } from "lucide-react";
+import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/u/$handle")({
   ssr: false,
@@ -46,16 +44,17 @@ function PublicProfile() {
 
   async function sendInterest() {
     if (!user || !profile) return;
-    const { error } = await supabase.from("interests_sent").insert({ from_user: user.id, to_user: profile.user_id });
+    const { error } = await supabase
+      .from("interests_sent")
+      .insert({ from_user: user.id, to_user: profile.user_id });
     if (error) {
       if (error.code === "23505") toast("Já enviado antes");
       else toast.error("Falha ao enviar");
-    } else toast.success("Interesse enviado 🔥");
+    } else toast.success("Interesse enviado");
   }
 
   async function openChat() {
     if (!user || !profile) return;
-    // Check conversation exists & unlocked
     const a = user.id < profile.user_id ? user.id : profile.user_id;
     const b = user.id < profile.user_id ? profile.user_id : user.id;
     const { data: conv } = await supabase
@@ -77,41 +76,146 @@ function PublicProfile() {
     nav({ to: "/home" });
   }
 
-  if (!profile) return <p className="p-6 text-center text-sm text-muted-foreground">Perfil não encontrado.</p>;
+  if (!profile)
+    return (
+      <div className="mx-auto max-w-2xl px-4 pt-10">
+        <div className="h-44 animate-pulse rounded-2xl border border-border bg-card/60" />
+      </div>
+    );
+
+  const isMe = user?.id === profile.user_id;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 pt-6">
-      <Card className="p-5">
-        <div className="flex items-center gap-4">
-          <SignedImage bucket="avatars" path={profile.avatar_url} alt={profile.display_name} className="h-20 w-20 rounded-full object-cover" />
-          <div className="flex-1">
-            <h1 className="text-lg font-bold">{profile.display_name} {profile.verified && <VerifiedBadge />}</h1>
-            <p className="text-sm text-muted-foreground">@{profile.handle}</p>
-            {profile.city && <p className="text-xs text-muted-foreground">📍 {profile.city}</p>}
+    <div className="mx-auto max-w-2xl px-4 pb-12 pt-6">
+      <section className="relative overflow-hidden rounded-2xl border border-border bg-card">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-32 opacity-[0.18]"
+          style={{
+            background:
+              "radial-gradient(120% 80% at 50% 0%, var(--fire) 0%, transparent 60%)",
+          }}
+        />
+        <div className="relative p-5">
+          <div className="flex items-start gap-4">
+            <div className="relative">
+              <div
+                className="absolute -inset-0.5 rounded-full opacity-80"
+                style={{ background: "var(--gradient-brasa-h)" }}
+              />
+              <SignedImage
+                bucket="avatars"
+                path={profile.avatar_url}
+                alt={profile.display_name}
+                className="relative h-20 w-20 rounded-full object-cover ring-2 ring-background"
+              />
+            </div>
+            <div className="min-w-0 flex-1 pt-1">
+              <div className="flex items-center gap-1.5">
+                <h1 className="truncate text-[19px] font-semibold tracking-tight">
+                  {profile.display_name}
+                </h1>
+                {profile.verified && <VerifiedBadge />}
+              </div>
+              <p className="mt-0.5 text-[13px] text-muted-foreground">@{profile.handle}</p>
+              {profile.city && (
+                <p className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+                  <MapPin className="h-3 w-3" strokeWidth={2} />
+                  {profile.city}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-        {profile.bio && <p className="mt-3 text-sm">{profile.bio}</p>}
-        {(profile.interests ?? []).length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {profile.interests.map((i: string) => <span key={i} className="rounded-full bg-secondary px-2.5 py-0.5 text-xs">{i}</span>)}
-          </div>
-        )}
-        {user?.id !== profile.user_id && (
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Button onClick={sendInterest}><Flame className="mr-1 h-4 w-4" /> Tenho interesse</Button>
-            <Button variant="outline" onClick={openChat}><MessageCircle className="mr-1 h-4 w-4" /> Chat</Button>
-            <ReportDialog targetType="user" targetId={profile.user_id} />
-            <Button variant="ghost" onClick={blockUser}><Ban className="mr-1 h-4 w-4" /> Bloquear</Button>
-          </div>
-        )}
-      </Card>
 
-      <div className="mt-5 grid grid-cols-3 gap-1">
-        {(posts ?? []).map((p: any) => {
-          const first = (p.post_media ?? []).sort((a: any, b: any) => a.order - b.order)[0];
-          return <SignedImage key={p.id} bucket="posts" path={first?.url} alt="" className="aspect-square w-full object-cover" />;
-        })}
-      </div>
+          {profile.bio && (
+            <p className="mt-4 text-[14px] leading-relaxed text-foreground/90">{profile.bio}</p>
+          )}
+
+          {(profile.interests ?? []).length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {profile.interests.map((i: string) => (
+                <span
+                  key={i}
+                  className="rounded-md border border-border bg-secondary/60 px-2 py-0.5 text-[11px] font-medium text-foreground/85"
+                >
+                  {i}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {!isMe && (
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <button
+                onClick={sendInterest}
+                className="flex h-10 items-center justify-center gap-1.5 rounded-lg text-[14px] font-medium text-primary-foreground transition active:scale-[0.98]"
+                style={{ background: "var(--gradient-brasa-h)" }}
+              >
+                <Flame className="h-4 w-4" strokeWidth={2.4} />
+                Tenho interesse
+              </button>
+              <button
+                onClick={openChat}
+                className="flex h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-secondary/60 text-[14px] font-medium tracking-tight hover:bg-secondary"
+              >
+                <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
+                Mensagem
+              </button>
+              <ReportDialog
+                targetType="user"
+                targetId={profile.user_id}
+                trigger={
+                  <button className="flex h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-[13px] font-medium text-muted-foreground hover:text-foreground">
+                    <Flag className="h-3.5 w-3.5" strokeWidth={2} />
+                    Denunciar
+                  </button>
+                }
+              />
+              <button
+                onClick={blockUser}
+                className="flex h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-[13px] font-medium text-destructive hover:bg-secondary/60"
+              >
+                <Ban className="h-3.5 w-3.5" strokeWidth={2} />
+                Bloquear
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="mt-7">
+        <div className="mb-2.5 flex items-center justify-between px-1">
+          <h2 className="inline-flex items-center gap-1.5 text-[13px] font-semibold tracking-tight">
+            <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+            Posts
+          </h2>
+          <span className="text-[11px] text-muted-foreground">{(posts ?? []).length}</span>
+        </div>
+        {!posts || posts.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card/40 px-4 py-10 text-center">
+            <p className="text-[13px] text-muted-foreground">Nenhum post publicado.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-1.5">
+            {posts.map((p: any) => {
+              const first = (p.post_media ?? []).sort((a: any, b: any) => a.order - b.order)[0];
+              return (
+                <div
+                  key={p.id}
+                  className="overflow-hidden rounded-lg border border-border"
+                >
+                  <SignedImage
+                    bucket="posts"
+                    path={first?.url}
+                    alt=""
+                    className="aspect-square w-full object-cover"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
