@@ -115,12 +115,13 @@ function Home() {
 
       <StoriesRail />
 
-      <Tabs defaultValue="recommended">
+      <Tabs defaultValue="all">
         <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="all">Todos</TabsTrigger>
           <TabsTrigger value="recommended">Recomendados</TabsTrigger>
           <TabsTrigger value="following">Seguindo</TabsTrigger>
-          <TabsTrigger value="all">Todos</TabsTrigger>
         </TabsList>
+
         <TabsContent value="recommended">
           <Feed mode="recommended" userId={user?.id ?? null} interests={profile?.interests ?? []} defaultBlur={profile?.nsfw_blur_default ?? true} />
         </TabsContent>
