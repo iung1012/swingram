@@ -10,7 +10,7 @@ import { useMyProfile } from "@/hooks/use-profile";
 import { distanceKm } from "@/lib/geo";
 import { Card } from "@/components/ui/card";
 
-const DARK_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json";
+const DARK_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
 type NearbyProfile = {
   user_id: string;
