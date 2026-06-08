@@ -69,7 +69,8 @@ async function fetchFeedPage(
     .from("profiles")
     .select("user_id, handle, display_name, avatar_url, verified, interests, shadow_banned, banned")
     .in("user_id", authorIds);
-  const authors = new Map<string, typeof authorsData extends Array<infer T> ? T : never>();
+  type AuthorRow = NonNullable<typeof authorsData>[number];
+  const authors = new Map<string, AuthorRow>();
   (authorsData ?? []).forEach((a) => authors.set(a.user_id, a));
 
   let rows = postRows
