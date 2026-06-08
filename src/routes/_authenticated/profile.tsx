@@ -49,6 +49,7 @@ function MyProfile() {
   const [bioDraft, setBioDraft] = useState("");
   const [savingBio, setSavingBio] = useState(false);
   const [tab, setTab] = useState<"posts" | "photos">("posts");
+  const [zoomPost, setZoomPost] = useState<{ id: string; url: string | null; kind: "image" | "video" | "text"; caption: string } | null>(null);
 
 
   async function saveBio() {
