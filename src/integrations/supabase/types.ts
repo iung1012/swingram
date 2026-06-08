@@ -378,34 +378,28 @@ export type Database = {
       }
       messages: {
         Row: {
-          body: string | null
+          body: string
           conversation_id: string
           created_at: string
           id: string
-          media_kind: string | null
-          media_path: string | null
           read_at: string | null
           sender_id: string
           status: Database["public"]["Enums"]["message_status"]
         }
         Insert: {
-          body?: string | null
+          body: string
           conversation_id: string
           created_at?: string
           id?: string
-          media_kind?: string | null
-          media_path?: string | null
           read_at?: string | null
           sender_id: string
           status?: Database["public"]["Enums"]["message_status"]
         }
         Update: {
-          body?: string | null
+          body?: string
           conversation_id?: string
           created_at?: string
           id?: string
-          media_kind?: string | null
-          media_path?: string | null
           read_at?: string | null
           sender_id?: string
           status?: Database["public"]["Enums"]["message_status"]
@@ -843,93 +837,6 @@ export type Database = {
         }
         Relationships: []
       }
-      story_reactions: {
-        Row: {
-          created_at: string
-          emoji: string
-          story_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          emoji: string
-          story_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          emoji?: string
-          story_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "story_reactions_story_id_fkey"
-            columns: ["story_id"]
-            isOneToOne: false
-            referencedRelation: "stories"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      story_replies: {
-        Row: {
-          body: string
-          created_at: string
-          id: string
-          sender_id: string
-          story_id: string
-        }
-        Insert: {
-          body: string
-          created_at?: string
-          id?: string
-          sender_id: string
-          story_id: string
-        }
-        Update: {
-          body?: string
-          created_at?: string
-          id?: string
-          sender_id?: string
-          story_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "story_replies_story_id_fkey"
-            columns: ["story_id"]
-            isOneToOne: false
-            referencedRelation: "stories"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      story_views: {
-        Row: {
-          created_at: string
-          story_id: string
-          viewer_id: string
-        }
-        Insert: {
-          created_at?: string
-          story_id: string
-          viewer_id: string
-        }
-        Update: {
-          created_at?: string
-          story_id?: string
-          viewer_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "story_views_story_id_fkey"
-            columns: ["story_id"]
-            isOneToOne: false
-            referencedRelation: "stories"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       subscriptions: {
         Row: {
           canceled_at: string | null
@@ -1093,10 +1000,6 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
-      mark_messages_read: {
-        Args: { p_conversation_id: string }
-        Returns: undefined
-      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "support" | "user"
