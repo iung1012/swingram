@@ -18,15 +18,12 @@ export function VerifiedAvatar({
   className = "h-9 w-9",
 }: VerifiedAvatarProps) {
   return (
-    <div className="relative inline-flex items-center justify-center">
+    <div className={cn("relative inline-block", verified ? "m-[2.5px]" : "m-[1.5px]")}>
       {verified ? (
         <>
           <div
-            className="absolute inset-0 rounded-full opacity-80"
-            style={{
-              background: "var(--gradient-brasa-h)",
-              padding: "2.5px",
-            }}
+            className="absolute -inset-[2.5px] rounded-full opacity-80"
+            style={{ background: "var(--gradient-brasa-h)" }}
           />
           <SignedImage
             bucket={bucket}
@@ -43,7 +40,7 @@ export function VerifiedAvatar({
         </>
       ) : (
         <>
-          <div className="absolute inset-0 rounded-full border-2 border-border/80" />
+          <div className="absolute -inset-[1.5px] rounded-full border-2 border-border/80" />
           <SignedImage
             bucket={bucket}
             path={path}
