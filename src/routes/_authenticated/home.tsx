@@ -96,15 +96,6 @@ async function fetchFeed(currentUserId: string | null, mode: FeedMode, interests
 function Home() {
   const { user } = useAuth();
   const { data: profile } = useMyProfile(user?.id);
-  const nav = useNavigate();
-  const [q, setQ] = useState("");
-
-  function submitSearch(e: React.FormEvent) {
-    e.preventDefault();
-    const term = q.trim();
-    if (!term) return;
-    nav({ to: "/search", search: { q: term } as never });
-  }
 
   return (
     <div className="mx-auto max-w-2xl px-3 pt-3">
@@ -112,33 +103,16 @@ function Home() {
         <h1 className="flex items-center gap-2 text-xl font-bold">
           <Flame className="text-primary" /> Brasa Swing
         </h1>
+        <Link
+          to="/search"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+          aria-label="Buscar"
+        >
+          <Search className="h-[18px] w-[18px]" strokeWidth={2.2} />
+        </Link>
       </header>
 
       <StoriesRail />
-
-
-      <form onSubmit={submitSearch} className="mb-3">
-        <label className="flex h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 transition-colors focus-within:border-foreground/25">
-          <Search className="h-4 w-4 text-muted-foreground" strokeWidth={2.2} />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar pessoas, @handle, cidade..."
-            className="h-full flex-1 bg-transparent text-[14px] outline-none placeholder:text-muted-foreground"
-            inputMode="search"
-            enterKeyHint="search"
-          />
-          {q && (
-            <button
-              type="button"
-              onClick={() => setQ("")}
-              className="text-[11px] font-medium text-muted-foreground hover:text-foreground"
-            >
-              Limpar
-            </button>
-          )}
-        </label>
-      </form>
 
       <Tabs defaultValue="recommended">
         <TabsList className="grid w-full grid-cols-3">
