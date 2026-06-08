@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FireLike } from "./fire-like";
-import { SignedImage } from "./signed-image";
+import { VerifiedAvatar } from "./verified-avatar";
 import { VerifiedBadge } from "./verified-badge";
 import { ReportDialog } from "./report-dialog";
 import {
