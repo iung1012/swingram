@@ -2,12 +2,9 @@ import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { computeAge } from "@/lib/age";
-import { BrasaLogo, BrasaWordmark } from "@/components/brasa-logo";
-import { Mail, Lock, Calendar, ArrowRight } from "lucide-react";
+import { BrasaLogo } from "@/components/brasa-logo";
 import { SpiralLoader } from "@/components/spiral-loader";
 
 export const Route = createFileRoute("/auth")({
@@ -57,132 +54,196 @@ function AuthPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
-      {/* Ambient glow */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full opacity-50 blur-3xl"
-        style={{ background: "var(--gradient-brasa)" }} />
-      <div className="pointer-events-none absolute bottom-0 left-0 h-[300px] w-[300px] rounded-full bg-primary/20 blur-3xl" />
+    <div className="relative flex min-h-screen w-full flex-col items-center justify-center bg-[#050505] px-6 py-12 font-body text-[#f5f5f5] selection:bg-primary/30">
+      {/* Brasa ambient glow — pulsa devagar atrás do wordmark */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div
+          className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px]"
+          style={{
+            background: "radial-gradient(circle, oklch(0.55 0.22 35 / 0.18), transparent 70%)",
+            animation: "brasa-pulse 6s ease-in-out infinite",
+          }}
+        />
+      </div>
 
-      <div className="relative mx-auto flex w-full max-w-sm flex-1 flex-col px-6 pt-16 pb-10">
-        {/* Brand */}
-        <div className="mb-12 flex flex-col items-center">
-          <BrasaLogo glow className="h-24 w-24" />
-          <h1 className="mt-5 text-3xl font-bold tracking-tight">
-            <BrasaWordmark />
+      <style>{`
+        @keyframes brasa-pulse {
+          0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(1); }
+          50% { opacity: 0.85; transform: translate(-50%, -50%) scale(1.05); }
+        }
+        @keyframes brasa-fade-up {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
+      <main
+        className="relative z-10 flex w-full max-w-[400px] flex-col"
+        style={{ animation: "brasa-fade-up 420ms ease-out both" }}
+      >
+        {/* Wordmark */}
+        <header className="mb-12 flex flex-col items-center">
+          <BrasaLogo className="mb-4 h-10 w-10" />
+          <h1
+            className="font-display text-2xl font-bold tracking-tight"
+            style={{
+              backgroundImage: "linear-gradient(135deg, #fff 0%, #fff 55%, oklch(0.78 0.18 55) 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            Brasa Swing
           </h1>
-          <p className="mt-2 text-center text-sm text-muted-foreground">
-            Encontros casuais, swing e exibicionismo. Acesso restrito a +18.
+          <p className="mt-2 text-center text-sm text-white/40">
+            Encontros casuais, swing e exibicionismo
           </p>
+        </header>
+
+        {/* Tabs underline */}
+        <div className="mb-8 flex border-b border-white/10">
+          {(["login", "signup"] as const).map((m) => {
+            const active = mode === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={`flex-1 cursor-pointer border-b-2 pb-3 text-sm font-medium transition-colors ${
+                  active
+                    ? "border-primary text-white"
+                    : "border-transparent text-white/40 hover:text-white/60"
+                }`}
+              >
+                {m === "login" ? "Entrar" : "Criar conta"}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Segmented control */}
-        <div className="mb-6 flex rounded-full border border-border bg-card/50 p-1 backdrop-blur">
-          {(["login", "signup"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMode(m)}
-              className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${
-                mode === m
-                  ? "bg-foreground text-background shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {m === "login" ? "Entrar" : "Criar conta"}
-            </button>
-          ))}
-        </div>
-
-        <form onSubmit={submit} className="space-y-3">
-          <Field icon={Mail}>
-            <Input
+        {/* Form */}
+        <form onSubmit={submit} className="space-y-4">
+          <FieldGroup label="Email">
+            <input
               type="email"
-              placeholder="Email"
+              placeholder="seu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="h-14 border-0 bg-transparent pl-12 text-base placeholder:text-muted-foreground/60 focus-visible:ring-0"
+              autoComplete="email"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm text-white placeholder:text-white/20 transition-all focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
             />
-          </Field>
-          <Field icon={Lock}>
-            <Input
+          </FieldGroup>
+
+          <FieldGroup label="Senha">
+            <input
               type="password"
-              placeholder={mode === "signup" ? "Senha (mín. 8)" : "Senha"}
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={mode === "signup" ? 8 : undefined}
-              className="h-14 border-0 bg-transparent pl-12 text-base placeholder:text-muted-foreground/60 focus-visible:ring-0"
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm text-white placeholder:text-white/20 transition-all focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
             />
-          </Field>
-          {mode === "signup" && (
-            <Field icon={Calendar}>
-              <Input
-                type="date"
-                placeholder="Data de nascimento"
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                required
-                className="h-14 border-0 bg-transparent pl-12 text-base placeholder:text-muted-foreground/60 focus-visible:ring-0"
-              />
-            </Field>
-          )}
+          </FieldGroup>
 
           {mode === "signup" && (
-            <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-              Ao criar conta você declara ter 18 anos ou mais e aceita os Termos.
-            </p>
+            <>
+              <FieldGroup label="Data de nascimento">
+                <input
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  required
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm text-white placeholder:text-white/20 transition-all focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50 [color-scheme:dark]"
+                />
+              </FieldGroup>
+              <p className="px-1 text-[11px] leading-relaxed text-white/40">
+                Ao criar conta você declara ter 18 anos ou mais e aceita os Termos.
+              </p>
+            </>
           )}
 
-          <Button
+          <button
             type="submit"
             disabled={loading}
-            className="group relative h-14 w-full overflow-hidden rounded-full text-base font-semibold text-primary-foreground shadow-[var(--shadow-brasa)] transition active:scale-[0.98]"
-            style={{ background: "var(--gradient-brasa-h)" }}
+            className="group mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-sm font-semibold text-primary-foreground shadow-[0_0_24px_oklch(0.64_0.24_28/0.28)] transition-all hover:bg-primary/90 hover:shadow-[0_0_32px_oklch(0.64_0.24_28/0.42)] active:scale-[0.98] disabled:opacity-70"
           >
-            <span className="relative z-10 inline-flex items-center justify-center gap-2">
-              {loading ? <SpiralLoader size={18} /> : (mode === "login" ? "Entrar" : "Criar conta +18")}
-              <ArrowRight className="h-5 w-5 transition group-hover:translate-x-0.5" />
-            </span>
-          </Button>
+            {loading ? (
+              <SpiralLoader size={18} />
+            ) : (
+              <>
+                {mode === "login" ? "Entrar" : "Criar conta"}
+                <ArrowGlyph />
+              </>
+            )}
+          </button>
         </form>
 
-        <div className="my-7 flex items-center gap-3">
-          <span className="h-px flex-1 bg-border" />
-          <span className="text-[11px] uppercase tracking-widest text-muted-foreground">ou</span>
-          <span className="h-px flex-1 bg-border" />
+        {/* Divider */}
+        <div className="my-8 flex items-center">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="px-4 text-[10px] font-bold uppercase tracking-widest text-white/30">
+            ou
+          </span>
+          <div className="h-px flex-1 bg-white/10" />
         </div>
 
+        {/* Google */}
         <button
           type="button"
           onClick={google}
-          className="flex h-14 w-full items-center justify-center gap-3 rounded-full border border-border bg-card/60 text-base font-medium backdrop-blur transition hover:bg-card active:scale-[0.98]"
+          className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 py-3.5 text-sm font-medium text-white/90 transition-colors hover:bg-white/[0.03]"
         >
           <GoogleIcon />
           Continuar com Google
         </button>
 
-        <p className="mt-auto pt-10 text-center text-[11px] text-muted-foreground">
-          Brasa Swing · Comunidade adulta verificada
+        {/* Footnote */}
+        <p className="mt-12 text-center text-[10px] font-medium uppercase tracking-widest text-white/25">
+          Comunidade adulta verificada · +18
         </p>
-      </div>
+      </main>
     </div>
   );
 }
 
-function Field({ icon: Icon, children }: { icon: React.ComponentType<{ className?: string }>; children: React.ReactNode }) {
+function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="relative rounded-2xl border border-border bg-card/60 backdrop-blur transition focus-within:border-primary/60 focus-within:shadow-[0_0_0_4px_oklch(0.64_0.24_28/0.12)]">
-      <Icon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+    <div className="space-y-1.5">
+      <label className="ml-1 text-[11px] font-semibold uppercase tracking-widest text-white/40">
+        {label}
+      </label>
       {children}
     </div>
+  );
+}
+
+function ArrowGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M5 12h14M13 5l7 7-7 7" />
+    </svg>
   );
 }
 
 function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
-      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.4 14.6 2.4 12 2.4 6.8 2.4 2.6 6.6 2.6 11.9S6.8 21.4 12 21.4c6.9 0 9.5-4.8 9.5-9.5 0-.6-.1-1.1-.2-1.7H12z"/>
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
     </svg>
   );
 }
