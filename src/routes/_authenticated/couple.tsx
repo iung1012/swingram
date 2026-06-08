@@ -14,7 +14,7 @@ import { Heart, Check, X, Unlink } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/couple")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Vínculo de casal — Spark" }] }),
+  head: () => ({ meta: [{ title: "Vínculo de casal — Brasa Swing" }] }),
   component: CouplePage,
 });
 

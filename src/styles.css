@@ -28,49 +28,60 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-fire: var(--fire);
+  --color-ember: var(--ember);
+  --color-gold: var(--gold);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --font-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
 }
 
-/* Dark sensual theme — applied by default */
+/* Brasa Swing — pure black canvas, fire palette (red → orange → yellow) */
 :root {
-  --radius: 0.75rem;
-  --background: oklch(0.13 0.02 350);
-  --foreground: oklch(0.97 0.01 340);
-  --card: oklch(0.18 0.03 350);
-  --card-foreground: oklch(0.97 0.01 340);
-  --popover: oklch(0.16 0.03 350);
-  --popover-foreground: oklch(0.97 0.01 340);
-  --primary: oklch(0.65 0.24 0);
-  --primary-foreground: oklch(0.98 0.01 340);
-  --secondary: oklch(0.25 0.05 340);
-  --secondary-foreground: oklch(0.97 0.01 340);
-  --muted: oklch(0.22 0.03 340);
-  --muted-foreground: oklch(0.7 0.04 340);
-  --accent: oklch(0.55 0.2 320);
-  --accent-foreground: oklch(0.98 0.01 340);
-  --destructive: oklch(0.62 0.24 27);
-  --destructive-foreground: oklch(0.98 0.01 340);
-  --fire: oklch(0.7 0.22 40);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 12%);
-  --ring: oklch(0.65 0.24 0);
-  --chart-1: oklch(0.65 0.24 0);
-  --chart-2: oklch(0.55 0.2 320);
-  --chart-3: oklch(0.7 0.22 40);
-  --chart-4: oklch(0.65 0.2 280);
-  --chart-5: oklch(0.6 0.18 200);
-  --sidebar: oklch(0.16 0.03 350);
-  --sidebar-foreground: oklch(0.97 0.01 340);
-  --sidebar-primary: oklch(0.65 0.24 0);
-  --sidebar-primary-foreground: oklch(0.98 0.01 340);
-  --sidebar-accent: oklch(0.25 0.05 340);
-  --sidebar-accent-foreground: oklch(0.97 0.01 340);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.65 0.24 0);
-  --gradient-fire: linear-gradient(135deg, oklch(0.65 0.24 0), oklch(0.7 0.22 40));
-  --gradient-night: linear-gradient(180deg, oklch(0.13 0.02 350), oklch(0.1 0.02 320));
+  --radius: 1rem;
+  --background: oklch(0.08 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.13 0.005 60);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.12 0.005 60);
+  --popover-foreground: oklch(0.98 0 0);
+  /* primary = brasa red */
+  --primary: oklch(0.64 0.24 28);
+  --primary-foreground: oklch(0.99 0.005 80);
+  --secondary: oklch(0.18 0.01 60);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.16 0.005 60);
+  --muted-foreground: oklch(0.68 0.01 60);
+  /* accent = orange */
+  --accent: oklch(0.72 0.2 50);
+  --accent-foreground: oklch(0.1 0 0);
+  --destructive: oklch(0.6 0.25 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  /* fire utility = warm orange, gold = warm yellow, ember = deep red */
+  --fire: oklch(0.74 0.2 55);
+  --ember: oklch(0.58 0.24 22);
+  --gold: oklch(0.85 0.18 85);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.74 0.2 55);
+  --chart-1: oklch(0.64 0.24 28);
+  --chart-2: oklch(0.74 0.2 55);
+  --chart-3: oklch(0.85 0.18 85);
+  --chart-4: oklch(0.58 0.24 22);
+  --chart-5: oklch(0.7 0.18 65);
+  --sidebar: oklch(0.1 0 0);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.64 0.24 28);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.18 0.01 60);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.74 0.2 55);
+  /* gradients — vertical red→orange→yellow like the B logo */
+  --gradient-brasa: linear-gradient(180deg, oklch(0.6 0.25 25) 0%, oklch(0.72 0.22 45) 50%, oklch(0.85 0.18 85) 100%);
+  --gradient-brasa-h: linear-gradient(135deg, oklch(0.6 0.25 25), oklch(0.72 0.22 45), oklch(0.85 0.18 85));
+  --gradient-night: radial-gradient(ellipse at top, oklch(0.13 0.02 30) 0%, oklch(0.06 0 0) 60%);
+  --shadow-brasa: 0 10px 40px -10px oklch(0.64 0.24 28 / 0.45);
 }
 
 @layer base {
@@ -80,8 +91,11 @@
     background: var(--gradient-night);
     color: var(--color-foreground);
     min-height: 100vh;
+    font-family: var(--font-display);
     -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
   }
+  h1, h2, h3, h4 { letter-spacing: -0.025em; }
   .nsfw-blur { filter: blur(28px); transition: filter 0.3s; }
   .nsfw-blur:hover { filter: blur(0); }
 
@@ -97,4 +111,25 @@
     100% { transform: translateY(-26px) scale(0.4); opacity: 0; }
   }
   .fire-spark { animation: fire-spark 0.6s ease-out forwards; }
+
+  @keyframes brasa-glow {
+    0%, 100% { filter: drop-shadow(0 0 12px oklch(0.7 0.22 45 / 0.5)); }
+    50% { filter: drop-shadow(0 0 24px oklch(0.7 0.22 45 / 0.85)); }
+  }
+  .brasa-glow { animation: brasa-glow 3s ease-in-out infinite; }
 }
+
+/* Dark grayscale map tiles — strip color/labels-ish look */
+.leaflet-container { background: oklch(0.08 0 0) !important; }
+.leaflet-tile {
+  filter: grayscale(1) brightness(0.55) contrast(1.15);
+}
+.leaflet-control-attribution,
+.leaflet-control-zoom { display: none !important; }
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: oklch(0.13 0 0) !important;
+  color: oklch(0.98 0 0) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 30px oklch(0 0 0 / 0.5) !important;
+}
+.leaflet-popup-content { margin: 12px 14px !important; }

@@ -16,7 +16,7 @@ import { snapAndFuzz } from "@/lib/geo";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Onboarding — Spark" }] }),
+  head: () => ({ meta: [{ title: "Onboarding — Brasa Swing" }] }),
   component: Onboarding,
 });
 
@@ -82,7 +82,7 @@ function Onboarding() {
       });
 
       if (error) throw error;
-      toast.success("Perfil pronto! Bem-vindo(a) ao Spark");
+      toast.success("Perfil pronto! Bem-vindo(a) ao Brasa Swing");
       nav({ to: "/home" });
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao salvar");

@@ -12,7 +12,7 @@ import { MessageCircle, Flame, Ban } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/u/$handle")({
   ssr: false,
-  head: ({ params }) => ({ meta: [{ title: `@${params.handle} — Spark` }] }),
+  head: ({ params }) => ({ meta: [{ title: `@${params.handle} — Brasa Swing` }] }),
   component: PublicProfile,
 });
 

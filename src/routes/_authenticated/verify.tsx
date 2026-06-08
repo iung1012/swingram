@@ -13,7 +13,7 @@ import { ShieldCheck, Clock, XCircle, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/verify")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Verificação — Spark" }] }),
+  head: () => ({ meta: [{ title: "Verificação — Brasa Swing" }] }),
   component: Verify,
 });
 

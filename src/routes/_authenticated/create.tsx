@@ -14,7 +14,7 @@ import { X } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/create")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Postar — Spark" }] }),
+  head: () => ({ meta: [{ title: "Postar — Brasa Swing" }] }),
   component: CreatePost,
 });
 

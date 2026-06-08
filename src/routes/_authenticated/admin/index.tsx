@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Admin — Spark" }] }),
+  head: () => ({ meta: [{ title: "Admin — Brasa Swing" }] }),
   component: Dashboard,
 });
 

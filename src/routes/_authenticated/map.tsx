@@ -6,7 +6,7 @@ const MapView = lazy(() => import("@/components/map-view"));
 
 export const Route = createFileRoute("/_authenticated/map")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Mapa — Spark" }] }),
+  head: () => ({ meta: [{ title: "Mapa — Brasa Swing" }] }),
   component: MapPage,
 });
 
