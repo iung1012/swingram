@@ -571,6 +571,19 @@ function CreatePost() {
         </div>
       </div>
 
+      {/* FLOATING ACTION BUTTON */}
+      {canSubmit && (
+        <button
+          onClick={submit}
+          disabled={submitting}
+          title="Publicar"
+          className="fixed right-4 top-4 z-[60] flex h-12 items-center gap-2 rounded-full px-5 text-[14px] font-medium text-primary-foreground shadow-lg transition hover:scale-105 active:scale-95 disabled:opacity-70"
+          style={{ background: "var(--gradient-brasa-h)" }}
+        >
+          <Send className="h-4 w-4" strokeWidth={2.2} />
+          <span>Publicar</span>
+        </button>
+      )}
     </div>
   );
 }
