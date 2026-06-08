@@ -88,14 +88,22 @@ export default function MapView() {
 
   // init map
   useEffect(() => {
+    console.log("[MapView] init effect", { hasContainer: !!mapContainer.current, hasMap: !!mapRef.current });
     if (!mapContainer.current || mapRef.current) return;
-    const map = L.map(mapContainer.current, {
-      center,
-      zoom: 11,
-      zoomControl: false,
-      attributionControl: false,
-    });
-    mapRef.current = map;
+    try {
+      const map = L.map(mapContainer.current, {
+        center,
+        zoom: 11,
+        zoomControl: false,
+        attributionControl: false,
+      });
+      mapRef.current = map;
+      console.log("[MapView] L.map created");
+    } catch (e) {
+      console.error("[MapView] L.map failed", e);
+      return;
+    }
+    const map = mapRef.current!;
 
     L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
       subdomains: "abcd",
