@@ -73,6 +73,11 @@ function Settings() {
       </Card>
 
       <Card className="space-y-3 p-4">
+        <h2 className="font-semibold">Segurança</h2>
+        <Button asChild variant="outline" className="w-full"><Link to={"/security" as never}>Autenticação em 2 fatores (2FA)</Link></Button>
+      </Card>
+
+      <Card className="space-y-3 p-4">
         <h2 className="font-semibold">Seus dados (LGPD)</h2>
         <Button variant="outline" className="w-full" onClick={exportData}>Exportar meus dados (JSON)</Button>
       </Card>
