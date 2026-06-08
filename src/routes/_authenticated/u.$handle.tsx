@@ -371,15 +371,15 @@ function PublicProfile() {
         )}
       </section>
 
-      <Dialog open={!!zoomPath} onOpenChange={(o) => !o && setZoomPath(null)}>
-        <DialogContent className="max-w-3xl border-none bg-transparent p-0 shadow-none">
+      <Dialog open={!!zoomPost} onOpenChange={(o) => !o && setZoomPost(null)}>
+        <DialogContent className="max-w-3xl border-border bg-card p-0">
           <DialogTitle className="sr-only">Visualizar post</DialogTitle>
-          {zoomPath && (
-            <SignedImage
-              bucket="posts"
-              path={zoomPath}
-              alt=""
-              className="h-auto max-h-[85vh] w-full rounded-lg object-contain"
+          {zoomPost && (
+            <ZoomPostContent
+              postId={zoomPost.id}
+              url={zoomPost.url}
+              caption={zoomPost.caption}
+              currentUserId={user?.id ?? null}
             />
           )}
         </DialogContent>
