@@ -796,7 +796,7 @@ function CommentItem({
         bucket="avatars"
         path={c.profile?.avatar_url ?? null}
         alt={c.profile?.display_name ?? ""}
-        verified={false}
+        verified={!!c.profile?.verified}
         className={depth > 0 ? "h-6 w-6 shrink-0" : "h-7 w-7 shrink-0"}
       />
       <div className="min-w-0 flex-1">
