@@ -32,7 +32,9 @@ const RADII = [
   { v: "10", label: "10 km" },
   { v: "25", label: "25 km" },
   { v: "50", label: "50 km" },
+  { v: "100", label: "100 km" },
 ];
+const INTERESTS = ["Casual", "Swing", "Exibicionismo", "Voyeurismo", "Encontros", "Festas", "Fetiches", "BDSM", "Fotografia íntima", "Online"];
 
 function Search() {
   const { user } = useAuth();
@@ -40,9 +42,14 @@ function Search() {
   const [q, setQ] = useState("");
   const [type, setType] = useState<string>("all");
   const [radius, setRadius] = useState<string>("0");
+  const [city, setCity] = useState("");
+  const [selInterests, setSelInterests] = useState<string[]>([]);
+
+  const toggleInterest = (i: string) =>
+    setSelInterests((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
 
   const { data: results, isLoading } = useQuery({
-    queryKey: ["search", q, type, radius, me?.lat_snap, me?.lng_snap],
+    queryKey: ["search", q, type, radius, city, selInterests, me?.lat_snap, me?.lng_snap],
     queryFn: async () => {
       let query = supabase
         .from("profiles")
@@ -54,6 +61,8 @@ function Search() {
         .limit(60);
       if (q) query = query.or(`handle.ilike.%${q}%,display_name.ilike.%${q}%,city.ilike.%${q}%`);
       if (type !== "all") query = query.eq("profile_type", type as never);
+      if (city.trim()) query = query.ilike("city", `%${city.trim()}%`);
+      if (selInterests.length > 0) query = query.overlaps("interests", selInterests);
       const { data } = await query;
       let rows = (data ?? []).filter((p: any) => !p.invisible_mode);
       const r = parseInt(radius);
@@ -91,9 +100,54 @@ function Search() {
         />
       </label>
 
+      <div className="mt-3">
+        <label className="flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-3 transition-colors focus-within:border-foreground/25">
+          <input
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="Filtrar por cidade"
+            className="h-full flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
+          />
+          {city && (
+            <button
+              type="button"
+              onClick={() => setCity("")}
+              className="text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              limpar
+            </button>
+          )}
+        </label>
+      </div>
+
       <div className="mt-4 space-y-3">
         <ChipGroup label="Tipo" value={type} onChange={setType} options={TYPES} />
         <ChipGroup label="Distância" value={radius} onChange={setRadius} options={RADII} />
+        <div>
+          <p className="mb-1.5 px-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Interesses {selInterests.length > 0 && `(${selInterests.length})`}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {INTERESTS.map((i) => {
+              const active = selInterests.includes(i);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => toggleInterest(i)}
+                  className={cn(
+                    "h-7 rounded-full border px-2.5 text-[12px] font-medium tracking-tight transition-colors",
+                    active
+                      ? "border-foreground/40 bg-secondary text-foreground"
+                      : "border-border bg-card text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {i}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div className="mt-5 flex items-center justify-between px-1">
