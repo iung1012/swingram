@@ -411,6 +411,7 @@ export type Database = {
           created_at: string
           height: number | null
           id: string
+          kind: string
           order: number
           post_id: string
           url: string
@@ -421,6 +422,7 @@ export type Database = {
           created_at?: string
           height?: number | null
           id?: string
+          kind?: string
           order?: number
           post_id: string
           url: string
@@ -431,6 +433,7 @@ export type Database = {
           created_at?: string
           height?: number | null
           id?: string
+          kind?: string
           order?: number
           post_id?: string
           url?: string
@@ -451,6 +454,7 @@ export type Database = {
           caption: string | null
           created_at: string
           deleted_at: string | null
+          hashtags: string[]
           id: string
           moderation_status: Database["public"]["Enums"]["moderation_status"]
           nsfw: boolean
@@ -461,6 +465,7 @@ export type Database = {
           caption?: string | null
           created_at?: string
           deleted_at?: string | null
+          hashtags?: string[]
           id?: string
           moderation_status?: Database["public"]["Enums"]["moderation_status"]
           nsfw?: boolean
@@ -471,6 +476,7 @@ export type Database = {
           caption?: string | null
           created_at?: string
           deleted_at?: string | null
+          hashtags?: string[]
           id?: string
           moderation_status?: Database["public"]["Enums"]["moderation_status"]
           nsfw?: boolean

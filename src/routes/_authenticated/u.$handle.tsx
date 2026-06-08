@@ -4,6 +4,8 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SignedImage } from "@/components/signed-image";
+import { SignedMedia } from "@/components/signed-media";
+import { renderCaption } from "@/lib/hashtags";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { ReportDialog } from "@/components/report-dialog";
@@ -31,7 +33,7 @@ function PublicProfile() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [reportOpen, setReportOpen] = useState(false);
-  const [zoomPost, setZoomPost] = useState<{ id: string; url: string; caption: string } | null>(null);
+  const [zoomPost, setZoomPost] = useState<{ id: string; url: string | null; kind: "image" | "video" | "text"; caption: string } | null>(null);
 
 
   const { data: profile } = useQuery({
@@ -48,7 +50,7 @@ function PublicProfile() {
     queryFn: async () => {
       const { data } = await supabase
         .from("posts")
-        .select("id, caption, post_media(url, order)")
+        .select("id, caption, post_media(url, order, kind)")
         .eq("user_id", profile!.user_id)
         .eq("moderation_status", "approved")
         .is("deleted_at", null)
@@ -351,19 +353,43 @@ function PublicProfile() {
           <div className="grid grid-cols-3 gap-1.5">
             {posts.map((p: any) => {
               const first = (p.post_media ?? []).sort((a: any, b: any) => a.order - b.order)[0];
+              const kind: "image" | "video" | "text" = first ? first.kind ?? "image" : "text";
               return (
                 <button
                   type="button"
                   key={p.id}
-                  onClick={() => first?.url && setZoomPost({ id: p.id, url: first.url, caption: p.caption ?? "" })}
-                  className="overflow-hidden rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                  onClick={() =>
+                    setZoomPost({
+                      id: p.id,
+                      url: first?.url ?? null,
+                      kind,
+                      caption: p.caption ?? "",
+                    })
+                  }
+                  className="group relative overflow-hidden rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
                 >
-                  <SignedImage
-                    bucket="posts"
-                    path={first?.url}
-                    alt=""
-                    className="aspect-square w-full object-cover transition-transform hover:scale-105"
-                  />
+                  {kind === "text" ? (
+                    <div className="flex aspect-square w-full items-center justify-center bg-secondary/40 p-2">
+                      <p className="line-clamp-5 text-center text-[11px] leading-snug text-foreground/90">
+                        {p.caption || "(sem texto)"}
+                      </p>
+                    </div>
+                  ) : (
+                    <SignedMedia
+                      bucket="posts"
+                      path={first?.url}
+                      kind={kind}
+                      alt=""
+                      controls={false}
+                      muted
+                      className="aspect-square w-full object-cover transition-transform group-hover:scale-105"
+                    />
+                  )}
+                  {kind === "video" && (
+                    <span className="pointer-events-none absolute right-1.5 top-1.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur">
+                      ▶ vídeo
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -378,6 +404,7 @@ function PublicProfile() {
             <ZoomPostContent
               postId={zoomPost.id}
               url={zoomPost.url}
+              kind={zoomPost.kind}
               caption={zoomPost.caption}
               currentUserId={user?.id ?? null}
             />
@@ -391,11 +418,13 @@ function PublicProfile() {
 function ZoomPostContent({
   postId,
   url,
+  kind,
   caption,
   currentUserId,
 }: {
   postId: string;
-  url: string;
+  url: string | null;
+  kind: "image" | "video" | "text";
   caption: string;
   currentUserId: string | null;
 }) {
@@ -449,20 +478,31 @@ function ZoomPostContent({
     qc.invalidateQueries({ queryKey: ["post-comments", postId] });
   }
 
+  const showMediaPane = kind !== "text" && !!url;
+
   return (
-    <div className="grid max-h-[85vh] grid-cols-1 overflow-hidden md:grid-cols-[1.2fr_1fr]">
-      <div className="flex items-center justify-center bg-black">
-        <SignedImage
-          bucket="posts"
-          path={url}
-          alt=""
-          className="max-h-[85vh] w-full object-contain"
-        />
-      </div>
+    <div
+      className={
+        "grid max-h-[85vh] grid-cols-1 overflow-hidden " +
+        (showMediaPane ? "md:grid-cols-[1.2fr_1fr]" : "")
+      }
+    >
+      {showMediaPane && (
+        <div className="flex items-center justify-center bg-black">
+          <SignedMedia
+            bucket="posts"
+            path={url}
+            kind={kind === "video" ? "video" : "image"}
+            alt=""
+            controls={kind === "video"}
+            className="max-h-[85vh] w-full object-contain"
+          />
+        </div>
+      )}
       <div className="flex max-h-[85vh] flex-col">
         {caption && (
-          <div className="border-b border-border px-4 py-3 text-[14px] leading-relaxed text-foreground/90">
-            {caption}
+          <div className="whitespace-pre-wrap border-b border-border px-4 py-3 text-[14px] leading-relaxed text-foreground/90">
+            {renderCaption(caption)}
           </div>
         )}
         <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
