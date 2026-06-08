@@ -61,9 +61,12 @@ async function fetchFeed(currentUserId: string | null, mode: FeedMode, interests
   let likesMap: Record<string, number> = {};
   let commentsMap: Record<string, number> = {};
   if (ids.length > 0) {
-    const [{ data: likes }, { data: comments }] = await Promise.all([
+    const [{ data: likes }, { data: comments }, savesRes] = await Promise.all([
       supabase.from("likes").select("post_id, user_id").in("post_id", ids),
       supabase.from("comments").select("post_id").in("post_id", ids),
+      currentUserId
+        ? supabase.from("saves").select("post_id").eq("user_id", currentUserId).in("post_id", ids)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
     (likes ?? []).forEach((l: any) => {
       likesMap[l.post_id] = (likesMap[l.post_id] ?? 0) + 1;
@@ -72,11 +75,9 @@ async function fetchFeed(currentUserId: string | null, mode: FeedMode, interests
     (comments ?? []).forEach((c: any) => {
       commentsMap[c.post_id] = (commentsMap[c.post_id] ?? 0) + 1;
     });
-    if (currentUserId) {
-      const { data: saves } = await supabase.from("saves").select("post_id").eq("user_id", currentUserId).in("post_id", ids);
-      (saves ?? []).forEach((s: any) => savedByMe.add(s.post_id));
-    }
+    (savesRes?.data ?? []).forEach((s: any) => savedByMe.add(s.post_id));
   }
+
 
   return rows.map((r: any) => ({
     id: r.id,
