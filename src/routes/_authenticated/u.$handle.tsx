@@ -96,7 +96,7 @@ function PublicProfile() {
     } catch {}
   }
 
-
+  async function sendInterest() {
     if (!user || !profile) return;
     const { error } = await supabase
       .from("interests_sent")
