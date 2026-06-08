@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
@@ -70,6 +70,11 @@ function Settings() {
         <Row label="Modo invisível" desc="Some do mapa mas vê os outros" checked={profile.invisible_mode} onChange={(v) => toggle("invisible_mode", v)} />
         <Row label="Blur em NSFW por padrão" desc="Conteúdo +18 começa borrado" checked={profile.nsfw_blur_default} onChange={(v) => toggle("nsfw_blur_default", v)} />
         <Button variant="outline" size="sm" className="w-full" onClick={refreshLocation}>Atualizar minha localização</Button>
+      </Card>
+
+      <Card className="space-y-3 p-4">
+        <h2 className="font-semibold">Segurança</h2>
+        <Button asChild variant="outline" className="w-full"><Link to={"/security" as never}>Autenticação em 2 fatores (2FA)</Link></Button>
       </Card>
 
       <Card className="space-y-3 p-4">
