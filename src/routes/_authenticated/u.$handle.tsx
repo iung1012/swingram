@@ -4,6 +4,8 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SignedImage } from "@/components/signed-image";
+import { SignedMedia } from "@/components/signed-media";
+import { renderCaption } from "@/lib/hashtags";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { ReportDialog } from "@/components/report-dialog";
