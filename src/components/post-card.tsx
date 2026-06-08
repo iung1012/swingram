@@ -63,7 +63,7 @@ export function PostCard({
   useEffect(() => { setLiked(post.liked_by_me); setLikes(post.likes_count); }, [post.liked_by_me, post.likes_count]);
 
   const { data: comments } = useQuery({
-    queryKey: ["post-comments", post.id],
+    queryKey: ["post-comments", post.id, currentUserId],
     enabled: showComments,
     queryFn: async () => {
       const { data: cs } = await supabase
@@ -73,7 +73,9 @@ export function PostCard({
         .eq("status", "visible")
         .order("created_at", { ascending: true })
         .limit(200);
-      const ids = Array.from(new Set((cs ?? []).map((c) => c.user_id)));
+      const list = cs ?? [];
+      const commentIds = list.map((c) => c.id);
+      const ids = Array.from(new Set(list.map((c) => c.user_id)));
       let profilesMap = new Map<string, any>();
       if (ids.length) {
         const { data: ps } = await supabase
@@ -82,9 +84,49 @@ export function PostCard({
           .in("user_id", ids);
         profilesMap = new Map((ps ?? []).map((p: any) => [p.user_id, p]));
       }
-      return (cs ?? []).map((c: any) => ({ ...c, profile: profilesMap.get(c.user_id) }));
+      let likesByComment = new Map<string, { count: number; mine: boolean; byAuthor: boolean }>();
+      if (commentIds.length) {
+        const { data: cls } = await supabase
+          .from("comment_likes")
+          .select("comment_id, user_id")
+          .in("comment_id", commentIds);
+        (cls ?? []).forEach((cl: any) => {
+          const prev = likesByComment.get(cl.comment_id) ?? { count: 0, mine: false, byAuthor: false };
+          prev.count += 1;
+          if (cl.user_id === currentUserId) prev.mine = true;
+          if (cl.user_id === post.user_id) prev.byAuthor = true;
+          likesByComment.set(cl.comment_id, prev);
+        });
+      }
+      return list.map((c: any) => ({
+        ...c,
+        profile: profilesMap.get(c.user_id),
+        likes: likesByComment.get(c.id)?.count ?? 0,
+        liked_by_me: likesByComment.get(c.id)?.mine ?? false,
+        liked_by_author: likesByComment.get(c.id)?.byAuthor ?? false,
+      }));
     },
   });
+
+  async function deleteComment(commentId: string) {
+    const { error } = await supabase.from("comments").delete().eq("id", commentId);
+    if (error) toast.error("Falha ao apagar");
+    else {
+      toast.success("Comentário apagado");
+      qc.invalidateQueries({ queryKey: ["post-comments", post.id] });
+      qc.invalidateQueries({ queryKey: ["feed"] });
+    }
+  }
+
+  async function toggleCommentLike(commentId: string, liked: boolean) {
+    if (!currentUserId) return;
+    if (liked) {
+      await supabase.from("comment_likes").delete().eq("comment_id", commentId).eq("user_id", currentUserId);
+    } else {
+      await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: currentUserId });
+    }
+    qc.invalidateQueries({ queryKey: ["post-comments", post.id] });
+  }
 
   async function submitComment(e: React.FormEvent) {
     e.preventDefault();
