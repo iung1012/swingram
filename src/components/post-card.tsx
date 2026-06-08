@@ -447,11 +447,28 @@ export function PostCard({
       )}
       {!commentsAsDialog && showComments && (
         <div className="border-t border-border">
-          <div className="max-h-72 space-y-3 overflow-y-auto px-3 py-3">
-            {(comments ?? []).length === 0 ? (
-              <p className="text-center text-[12px] text-muted-foreground">
-                {comments ? "Seja o primeiro a comentar." : "Carregando…"}
-              </p>
+          <div
+            ref={inlineScrollRef}
+            onScroll={onCommentsScroll}
+            className="max-h-72 space-y-3 overflow-y-auto px-3 py-3"
+          >
+            {hasNextPage && (
+              <button
+                type="button"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="mx-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-50"
+              >
+                {isFetchingNextPage ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : null}
+                Ver comentários anteriores
+              </button>
+            )}
+            {commentsLoading ? (
+              <p className="text-center text-[12px] text-muted-foreground">Carregando…</p>
+            ) : (comments ?? []).length === 0 ? (
+              <p className="text-center text-[12px] text-muted-foreground">Seja o primeiro a comentar.</p>
             ) : (
               (comments ?? []).map((c: any) => {
                 const isOwn = c.user_id === currentUserId;
