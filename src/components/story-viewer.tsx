@@ -2,7 +2,16 @@
 
 import * as React from "react";
 import { motion, AnimatePresence, type PanInfo } from "framer-motion";
-import { X, ChevronLeft, ChevronRight, Pause, Trash2 } from "lucide-react";
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Pause,
+  Trash2,
+  Eye,
+  Send,
+  MessageCircle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SpiralLoader } from "@/components/spiral-loader";
 import { SignedImage } from "@/components/signed-image";
@@ -14,7 +23,22 @@ export interface Story {
   duration?: number;
 }
 
+export interface StoryPerson {
+  id: string;
+  name: string;
+  avatar?: string | null;
+  emoji?: string | null;
+}
+
+export interface StoryReplyInfo {
+  id: string;
+  name: string;
+  avatar?: string | null;
+  body: string;
+}
+
 const DEFAULT_IMAGE_DURATION = 5000;
+const QUICK_EMOJIS = ["🔥", "❤️", "😍", "😮", "😂", "👏"];
 
 const slideVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? "100%" : "-100%", opacity: 0 }),
@@ -44,6 +68,12 @@ export interface StoryViewerProps {
   onStoryView?: (id: string) => void;
   onDeleteStory?: (id: string) => void | Promise<void>;
   canDelete?: boolean;
+  isOwner?: boolean;
+  onReact?: (storyId: string, emoji: string) => void;
+  onReply?: (storyId: string, body: string) => void;
+  myReactions?: Record<string, string>;
+  viewersByStory?: Record<string, StoryPerson[]>;
+  repliesByStory?: Record<string, StoryReplyInfo[]>;
 }
 
 export function StoryViewer({
@@ -56,10 +86,18 @@ export function StoryViewer({
   onStoryView,
   onDeleteStory,
   canDelete = false,
+  isOwner = false,
+  onReact,
+  onReply,
+  myReactions,
+  viewersByStory,
+  repliesByStory,
 }: StoryViewerProps) {
   const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
   const [progress, setProgress] = React.useState(0);
   const [isPaused, setIsPaused] = React.useState(false);
+  const [showInsights, setShowInsights] = React.useState(false);
+  const [replyText, setReplyText] = React.useState("");
   const [duration, setDuration] = React.useState(DEFAULT_IMAGE_DURATION);
   const [direction, setDirection] = React.useState(0);
   const [isReady, setIsReady] = React.useState(false);
@@ -140,6 +178,8 @@ export function StoryViewer({
   // keys
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
       if (e.key === "ArrowLeft") goPrev();
       else if (e.key === "ArrowRight") goNext();
       else if (e.key === "Escape") onClose();
@@ -322,6 +362,154 @@ export function StoryViewer({
         >
           <ChevronRight className="h-5 w-5" />
         </button>
+
+        {/* Footer de engajamento */}
+        <div
+          className="absolute inset-x-0 bottom-0 z-30 p-3"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {isOwner ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowInsights((s) => !s);
+                setIsPaused(true);
+              }}
+              className="mx-auto flex items-center gap-2 rounded-full bg-black/55 px-4 py-2 text-sm text-white backdrop-blur"
+            >
+              <Eye className="h-4 w-4" />
+              {viewersByStory?.[story.id]?.length ?? 0} visualizações
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-1.5">
+                {QUICK_EMOJIS.map((em) => {
+                  const active = myReactions?.[story.id] === em;
+                  return (
+                    <button
+                      key={em}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReact?.(story.id, em);
+                      }}
+                      className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-full text-xl transition",
+                        active ? "scale-110 bg-white/25" : "bg-black/40 hover:bg-black/60"
+                      )}
+                    >
+                      {em}
+                    </button>
+                  );
+                })}
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const v = replyText.trim();
+                  if (!v) return;
+                  onReply?.(story.id, v);
+                  setReplyText("");
+                }}
+                className="flex items-center gap-2"
+              >
+                <input
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  onFocus={() => setIsPaused(true)}
+                  onBlur={() => setIsPaused(false)}
+                  placeholder={`Responder para ${username}…`}
+                  maxLength={500}
+                  className="h-10 flex-1 rounded-full border border-white/25 bg-black/40 px-4 text-sm text-white outline-none backdrop-blur placeholder:text-white/60"
+                />
+                <button
+                  type="submit"
+                  aria-label="Enviar resposta"
+                  disabled={!replyText.trim()}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black disabled:opacity-40"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+
+        {/* Painel de atividade (autor do story) */}
+        {isOwner && showInsights && (
+          <div
+            className="absolute inset-x-0 bottom-0 top-1/3 z-40 overflow-y-auto rounded-t-3xl bg-background p-4 text-foreground"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Atividade do story</h3>
+              <button
+                onClick={() => {
+                  setShowInsights(false);
+                  setIsPaused(false);
+                }}
+                aria-label="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Eye className="h-3.5 w-3.5" /> Visualizações (
+              {viewersByStory?.[story.id]?.length ?? 0})
+            </p>
+            <ul className="mb-4 space-y-2">
+              {(viewersByStory?.[story.id] ?? []).map((p) => (
+                <li key={p.id} className="flex items-center gap-2.5">
+                  {p.avatar ? (
+                    <SignedImage
+                      bucket="avatars"
+                      path={p.avatar}
+                      alt=""
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-secondary" />
+                  )}
+                  <span className="flex-1 truncate text-sm">{p.name}</span>
+                  {p.emoji && <span className="text-lg">{p.emoji}</span>}
+                </li>
+              ))}
+              {(viewersByStory?.[story.id]?.length ?? 0) === 0 && (
+                <li className="text-sm text-muted-foreground">Ninguém viu ainda.</li>
+              )}
+            </ul>
+
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <MessageCircle className="h-3.5 w-3.5" /> Respostas (
+              {repliesByStory?.[story.id]?.length ?? 0})
+            </p>
+            <ul className="space-y-2.5">
+              {(repliesByStory?.[story.id] ?? []).map((r) => (
+                <li key={r.id} className="flex items-start gap-2.5">
+                  {r.avatar ? (
+                    <SignedImage
+                      bucket="avatars"
+                      path={r.avatar}
+                      alt=""
+                      className="h-8 w-8 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 shrink-0 rounded-full bg-secondary" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium">{r.name}</p>
+                    <p className="break-words text-sm text-muted-foreground">{r.body}</p>
+                  </div>
+                </li>
+              ))}
+              {(repliesByStory?.[story.id]?.length ?? 0) === 0 && (
+                <li className="text-sm text-muted-foreground">Sem respostas ainda.</li>
+              )}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

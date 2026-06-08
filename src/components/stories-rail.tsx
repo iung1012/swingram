@@ -7,7 +7,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
 import { toast } from "sonner";
-import { StoryViewer, StoryRingButton, type Story } from "@/components/story-viewer";
+import {
+  StoryViewer,
+  StoryRingButton,
+  type Story,
+  type StoryPerson,
+  type StoryReplyInfo,
+} from "@/components/story-viewer";
 import { SignedImage } from "@/components/signed-image";
 
 type Row = {
@@ -136,17 +142,30 @@ export function StoriesRail() {
     setOpenGroupIdx(idx);
   }
 
-  const markViewed = useCallback((id: string) => {
-    setViewed((prev) => {
-      if (prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.add(id);
-      try {
-        localStorage.setItem("brasa.viewedStories", JSON.stringify([...next]));
-      } catch {}
-      return next;
-    });
-  }, []);
+  const markViewed = useCallback(
+    (id: string) => {
+      setViewed((prev) => {
+        if (prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.add(id);
+        try {
+          localStorage.setItem("brasa.viewedStories", JSON.stringify([...next]));
+        } catch {}
+        return next;
+      });
+      // Persiste a visualização (ignora duplicatas via PK story_id+viewer_id)
+      if (user) {
+        void supabase
+          .from("story_views")
+          .upsert(
+            { story_id: id, viewer_id: user.id },
+            { onConflict: "story_id,viewer_id", ignoreDuplicates: true }
+          )
+          .then(() => {});
+      }
+    },
+    [user]
+  );
 
   const deleteStory = useCallback(
     async (id: string) => {
@@ -178,6 +197,136 @@ export function StoriesRail() {
   }, [myGroup, otherGroups]);
 
   const activeGroup = openGroupIdx !== null ? orderedGroups[openGroupIdx] : null;
+  const isOwnerActive = !!activeGroup && activeGroup.user_id === user?.id;
+
+  // Minhas reações aos stories do grupo aberto (para destacar o emoji escolhido)
+  const { data: myReactions } = useQuery({
+    queryKey: ["story-my-reactions", activeGroup?.user_id, user?.id],
+    enabled: !!activeGroup && !!user && !isOwnerActive,
+    queryFn: async () => {
+      const storyIds = activeGroup!.rows.map((r) => r.id);
+      const { data } = await supabase
+        .from("story_reactions")
+        .select("story_id, emoji")
+        .eq("user_id", user!.id)
+        .in("story_id", storyIds);
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((r) => {
+        map[r.story_id] = r.emoji;
+      });
+      return map;
+    },
+  });
+
+  // Atividade dos MEUS stories: quem viu (+emoji) e respostas
+  const { data: insights } = useQuery({
+    queryKey: ["story-insights", activeGroup?.user_id, user?.id],
+    enabled: !!activeGroup && !!user && isOwnerActive,
+    queryFn: async () => {
+      const storyIds = activeGroup!.rows.map((r) => r.id);
+      const [views, reactions, replies] = await Promise.all([
+        supabase.from("story_views").select("story_id, viewer_id").in("story_id", storyIds),
+        supabase
+          .from("story_reactions")
+          .select("story_id, user_id, emoji")
+          .in("story_id", storyIds),
+        supabase
+          .from("story_replies")
+          .select("id, story_id, sender_id, body, created_at")
+          .in("story_id", storyIds)
+          .order("created_at"),
+      ]);
+      const viewRows = views.data ?? [];
+      const reactionRows = reactions.data ?? [];
+      const replyRows = replies.data ?? [];
+
+      const ids = new Set<string>();
+      viewRows.forEach((v) => v.viewer_id !== user!.id && ids.add(v.viewer_id));
+      reactionRows.forEach((r) => ids.add(r.user_id));
+      replyRows.forEach((r) => ids.add(r.sender_id));
+
+      const profMap = new Map<
+        string,
+        { display_name: string; handle: string; avatar_url: string | null }
+      >();
+      if (ids.size) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, handle, avatar_url")
+          .in("user_id", [...ids]);
+        (profs ?? []).forEach((p) => profMap.set(p.user_id, p));
+      }
+      const nameOf = (uid: string) => {
+        const p = profMap.get(uid);
+        return p?.display_name || (p ? `@${p.handle}` : "Usuário");
+      };
+
+      const reactionByStoryUser = new Map<string, string>();
+      reactionRows.forEach((r) =>
+        reactionByStoryUser.set(`${r.story_id}|${r.user_id}`, r.emoji)
+      );
+
+      const viewersByStory: Record<string, StoryPerson[]> = {};
+      viewRows.forEach((v) => {
+        if (v.viewer_id === user!.id) return; // não conta a si mesmo
+        (viewersByStory[v.story_id] ??= []).push({
+          id: v.viewer_id,
+          name: nameOf(v.viewer_id),
+          avatar: profMap.get(v.viewer_id)?.avatar_url ?? null,
+          emoji: reactionByStoryUser.get(`${v.story_id}|${v.viewer_id}`) ?? null,
+        });
+      });
+
+      const repliesByStory: Record<string, StoryReplyInfo[]> = {};
+      replyRows.forEach((r) => {
+        (repliesByStory[r.story_id] ??= []).push({
+          id: r.id,
+          name: nameOf(r.sender_id),
+          avatar: profMap.get(r.sender_id)?.avatar_url ?? null,
+          body: r.body,
+        });
+      });
+
+      return { viewersByStory, repliesByStory };
+    },
+  });
+
+  const reactToStory = useCallback(
+    async (storyId: string, emoji: string) => {
+      if (!user) return;
+      if (myReactions?.[storyId] === emoji) {
+        await supabase
+          .from("story_reactions")
+          .delete()
+          .eq("story_id", storyId)
+          .eq("user_id", user.id);
+      } else {
+        await supabase
+          .from("story_reactions")
+          .upsert(
+            { story_id: storyId, user_id: user.id, emoji },
+            { onConflict: "story_id,user_id" }
+          );
+      }
+      qc.invalidateQueries({ queryKey: ["story-my-reactions"] });
+    },
+    [user, myReactions, qc]
+  );
+
+  const replyToStory = useCallback(
+    async (storyId: string, body: string) => {
+      if (!user) return;
+      const { error } = await supabase
+        .from("story_replies")
+        .insert({ story_id: storyId, sender_id: user.id, body });
+      if (error) {
+        toast.error("Falha ao enviar resposta");
+        return;
+      }
+      toast.success("Resposta enviada");
+    },
+    [user]
+  );
 
   return (
     <div className="-mx-3 mb-3">
@@ -239,6 +388,12 @@ export function StoriesRail() {
           onStoryView={markViewed}
           canDelete={activeGroup.user_id === user?.id}
           onDeleteStory={deleteStory}
+          isOwner={isOwnerActive}
+          onReact={reactToStory}
+          onReply={replyToStory}
+          myReactions={myReactions}
+          viewersByStory={insights?.viewersByStory}
+          repliesByStory={insights?.repliesByStory}
         />
       )}
     </div>
