@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2, Heart, Users, MoreVertical, Eye, BadgeCheck } from "lucide-react";
+import { useMyProfile } from "@/hooks/use-profile";
+import { distanceKm } from "@/lib/geo";
 
 
 function formatCompact(n: number): string {
@@ -43,6 +45,7 @@ function PublicProfile() {
   const [reportOpen, setReportOpen] = useState(false);
   const [zoomPost, setZoomPost] = useState<{ id: string; url: string | null; kind: "image" | "video" | "text"; caption: string } | null>(null);
   const [tab, setTab] = useState<"posts" | "photos">("posts");
+  const { data: myProfile } = useMyProfile(user?.id);
 
 
   const { data: profile } = useQuery({
