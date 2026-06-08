@@ -321,7 +321,7 @@ function PublicProfile() {
           <div className="mt-4 flex items-center gap-5 border-t border-border/60 pt-3 text-[12px]">
             <div className="flex items-center gap-1.5">
               <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
-              <span className="font-semibold tabular-nums">{(posts ?? []).length}</span>
+              <span className="font-semibold tabular-nums">{(postCards ?? []).length}</span>
               <span className="text-muted-foreground">posts</span>
             </div>
             <div className="flex items-center gap-1.5">
