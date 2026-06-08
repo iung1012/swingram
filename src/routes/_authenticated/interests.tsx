@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { SignedImage } from "@/components/signed-image";
+import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { Flame, Check, X, Inbox } from "lucide-react";
 import { toast } from "sonner";
@@ -76,11 +76,12 @@ function InterestsPage() {
           <div className="divide-y divide-border">
             {data.map((r: any) => (
               <div key={r.id} className="flex items-center gap-3 px-3 py-3">
-                <SignedImage
+                <VerifiedAvatar
                   bucket="avatars"
                   path={r.sender?.avatar_url}
                   alt={r.sender?.display_name}
-                  className="h-11 w-11 rounded-full object-cover ring-1 ring-border"
+                  verified={r.sender?.verified}
+                  className="h-11 w-11"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-1 truncate text-[14px] font-medium tracking-tight">

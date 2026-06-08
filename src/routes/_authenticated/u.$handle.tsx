@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SignedImage } from "@/components/signed-image";
+import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { ReportDialog } from "@/components/report-dialog";
 import { toast } from "sonner";
@@ -98,18 +99,13 @@ function PublicProfile() {
         />
         <div className="relative p-5">
           <div className="flex items-start gap-4">
-            <div className="relative">
-              <div
-                className="absolute -inset-0.5 rounded-full opacity-80"
-                style={{ background: "var(--gradient-brasa-h)" }}
-              />
-              <SignedImage
-                bucket="avatars"
-                path={profile.avatar_url}
-                alt={profile.display_name}
-                className="relative h-20 w-20 rounded-full object-cover ring-2 ring-background"
-              />
-            </div>
+          <VerifiedAvatar
+            bucket="avatars"
+            path={profile.avatar_url}
+            alt={profile.display_name}
+            verified={profile.verified}
+            className="h-20 w-20"
+          />
             <div className="min-w-0 flex-1 pt-1">
               <div className="flex items-center gap-1.5">
                 <h1 className="truncate text-[19px] font-semibold tracking-tight">
