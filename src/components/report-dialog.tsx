@@ -79,13 +79,16 @@ export function ReportDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button variant="ghost" size="sm" className="text-muted-foreground">
-            <Flag className="mr-1 h-4 w-4" /> Denunciar
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger !== null && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button variant="ghost" size="sm" className="text-muted-foreground">
+              <Flag className="mr-1 h-4 w-4" /> Denunciar
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
+
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Denunciar</DialogTitle>
