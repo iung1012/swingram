@@ -70,7 +70,7 @@ type CommentRow = {
   body: string;
   created_at: string;
   parent_id: string | null;
-  profile?: { handle: string; display_name: string; avatar_url: string | null };
+  profile?: { handle: string; display_name: string; avatar_url: string | null; verified: boolean };
   likes: number;
   liked_by_me: boolean;
   liked_by_author: boolean;
