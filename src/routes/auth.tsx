@@ -138,16 +138,26 @@ function AuthPage() {
           </FieldGroup>
 
           <FieldGroup label="Senha">
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={mode === "signup" ? 8 : undefined}
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-sm text-white placeholder:text-white/20 transition-all focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={mode === "signup" ? 8 : undefined}
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 pr-11 text-sm text-white placeholder:text-white/20 transition-all focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/50"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </FieldGroup>
 
           {mode === "signup" && (
