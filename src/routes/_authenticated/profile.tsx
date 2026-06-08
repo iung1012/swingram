@@ -68,19 +68,70 @@ function MyProfile() {
   }
 
 
-  const { data: posts } = useQuery({
+  const { data: posts } = useQuery<
+    Array<PostCardData & { moderation_status: string }>
+  >({
     queryKey: ["my-posts", user?.id],
-    enabled: !!user,
+    enabled: !!user && !!profile,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: rows } = await supabase
         .from("posts")
-        .select("id, caption, post_media(url, order, kind), moderation_status")
+        .select(
+          `id, user_id, caption, nsfw, created_at, moderation_status, post_media(url, order, kind)`,
+        )
         .eq("user_id", user!.id)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
-      return data ?? [];
+
+      const postRows = rows ?? [];
+      if (postRows.length === 0 || !profile) return [];
+
+      const ids = postRows.map((r: any) => r.id);
+      const [{ data: likes }, { data: comments }, savesRes] = await Promise.all([
+        supabase.from("likes").select("post_id, user_id").in("post_id", ids),
+        supabase.from("comments").select("post_id").in("post_id", ids),
+        supabase.from("saves").select("post_id").eq("user_id", user!.id).in("post_id", ids),
+      ]);
+
+      const likesMap: Record<string, number> = {};
+      const likesByMe = new Set<string>();
+      (likes ?? []).forEach((l: any) => {
+        likesMap[l.post_id] = (likesMap[l.post_id] ?? 0) + 1;
+        if (l.user_id === user!.id) likesByMe.add(l.post_id);
+      });
+      const commentsMap: Record<string, number> = {};
+      (comments ?? []).forEach((c: any) => {
+        commentsMap[c.post_id] = (commentsMap[c.post_id] ?? 0) + 1;
+      });
+      const savedByMe = new Set<string>();
+      (savesRes?.data ?? []).forEach((s: any) => savedByMe.add(s.post_id));
+
+      const author = {
+        handle: profile.handle,
+        display_name: profile.display_name,
+        avatar_url: profile.avatar_url,
+        verified: profile.verified,
+      };
+
+      return postRows.map((r: any) => ({
+        id: r.id,
+        user_id: r.user_id,
+        caption: r.caption,
+        nsfw: r.nsfw,
+        created_at: r.created_at,
+        moderation_status: r.moderation_status,
+        author,
+        media: (r.post_media ?? [])
+          .sort((a: any, b: any) => a.order - b.order)
+          .map((m: any) => ({ url: m.url, order: m.order, kind: m.kind })),
+        likes_count: likesMap[r.id] ?? 0,
+        liked_by_me: likesByMe.has(r.id),
+        saved_by_me: savedByMe.has(r.id),
+        comments_count: commentsMap[r.id] ?? 0,
+      }));
     },
   });
+
 
   async function uploadImage(
     kind: "avatar" | "banner",
