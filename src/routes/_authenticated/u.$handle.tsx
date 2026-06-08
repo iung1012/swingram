@@ -23,6 +23,12 @@ import { toast } from "sonner";
 import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2, Heart, Users, MoreVertical, Eye } from "lucide-react";
 
 
+function formatCompact(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return (n / 1000).toFixed(n < 10_000 ? 1 : 0).replace(/\.0$/, "") + "k";
+  return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+}
+
 export const Route = createFileRoute("/_authenticated/u/$handle")({
   ssr: false,
   head: ({ params }) => ({ meta: [{ title: `@${params.handle} — Brasa Swing` }] }),
