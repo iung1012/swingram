@@ -1,11 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PostCard, type PostCardData } from "@/components/post-card";
-import { Flame } from "lucide-react";
+import { Flame, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/home")({
   ssr: false,
@@ -13,7 +14,25 @@ export const Route = createFileRoute("/_authenticated/home")({
   component: Home,
 });
 
-async function fetchFeed(currentUserId: string | null, mode: "all" | "recommended", interests: string[]): Promise<PostCardData[]> {
+type FeedMode = "all" | "recommended" | "following";
+
+async function fetchFollowingIds(userId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from("interests_sent")
+    .select("to_user")
+    .eq("from_user", userId)
+    .eq("status", "accepted");
+  return (data ?? []).map((r: any) => r.to_user);
+}
+
+async function fetchFeed(currentUserId: string | null, mode: FeedMode, interests: string[]): Promise<PostCardData[]> {
+  let followingIds: string[] = [];
+  if (mode === "following") {
+    if (!currentUserId) return [];
+    followingIds = await fetchFollowingIds(currentUserId);
+    if (followingIds.length === 0) return [];
+  }
+
   let q = supabase
     .from("posts")
     .select(`
@@ -25,6 +44,9 @@ async function fetchFeed(currentUserId: string | null, mode: "all" | "recommende
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(40);
+
+  if (mode === "following") q = q.in("user_id", followingIds);
+
   const { data } = await q;
   let rows = (data ?? []).filter((p: any) => !p.profiles.shadow_banned && !p.profiles.banned);
 
@@ -32,7 +54,6 @@ async function fetchFeed(currentUserId: string | null, mode: "all" | "recommende
     rows = rows.filter((p: any) => (p.profiles.interests ?? []).some((i: string) => interests.includes(i)));
   }
 
-  // Fetch counts and current-user state
   const ids = rows.map((r: any) => r.id);
   let likesByMe: Set<string> = new Set();
   let savedByMe: Set<string> = new Set();
@@ -74,31 +95,80 @@ async function fetchFeed(currentUserId: string | null, mode: "all" | "recommende
 function Home() {
   const { user } = useAuth();
   const { data: profile } = useMyProfile(user?.id);
+  const nav = useNavigate();
+  const [q, setQ] = useState("");
+
+  function submitSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const term = q.trim();
+    if (!term) return;
+    nav({ to: "/search", search: { q: term } as never });
+  }
 
   return (
     <div className="mx-auto max-w-2xl px-3 pt-3">
       <header className="mb-3 flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-xl font-bold"><Flame className="text-primary" /> Brasa Swing</h1>
+        <h1 className="flex items-center gap-2 text-xl font-bold">
+          <Flame className="text-primary" /> Brasa Swing
+        </h1>
       </header>
+
+      <form onSubmit={submitSearch} className="mb-3">
+        <label className="flex h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 transition-colors focus-within:border-foreground/25">
+          <Search className="h-4 w-4 text-muted-foreground" strokeWidth={2.2} />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar pessoas, @handle, cidade..."
+            className="h-full flex-1 bg-transparent text-[14px] outline-none placeholder:text-muted-foreground"
+            inputMode="search"
+            enterKeyHint="search"
+          />
+          {q && (
+            <button
+              type="button"
+              onClick={() => setQ("")}
+              className="text-[11px] font-medium text-muted-foreground hover:text-foreground"
+            >
+              Limpar
+            </button>
+          )}
+        </label>
+      </form>
+
       <Tabs defaultValue="recommended">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="recommended">Recomendados</TabsTrigger>
+          <TabsTrigger value="following">Seguindo</TabsTrigger>
           <TabsTrigger value="all">Todos</TabsTrigger>
         </TabsList>
-        <TabsContent value="recommended"><Feed mode="recommended" userId={user?.id ?? null} interests={profile?.interests ?? []} defaultBlur={profile?.nsfw_blur_default ?? true} /></TabsContent>
-        <TabsContent value="all"><Feed mode="all" userId={user?.id ?? null} interests={profile?.interests ?? []} defaultBlur={profile?.nsfw_blur_default ?? true} /></TabsContent>
+        <TabsContent value="recommended">
+          <Feed mode="recommended" userId={user?.id ?? null} interests={profile?.interests ?? []} defaultBlur={profile?.nsfw_blur_default ?? true} />
+        </TabsContent>
+        <TabsContent value="following">
+          <Feed mode="following" userId={user?.id ?? null} interests={profile?.interests ?? []} defaultBlur={profile?.nsfw_blur_default ?? true} />
+        </TabsContent>
+        <TabsContent value="all">
+          <Feed mode="all" userId={user?.id ?? null} interests={profile?.interests ?? []} defaultBlur={profile?.nsfw_blur_default ?? true} />
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function Feed({ mode, userId, interests, defaultBlur }: { mode: "all" | "recommended"; userId: string | null; interests: string[]; defaultBlur: boolean }) {
+function Feed({ mode, userId, interests, defaultBlur }: { mode: FeedMode; userId: string | null; interests: string[]; defaultBlur: boolean }) {
   const { data, isLoading } = useQuery({
     queryKey: ["feed", mode, userId, interests.join(",")],
     queryFn: () => fetchFeed(userId, mode, interests),
   });
   if (isLoading) return <p className="py-12 text-center text-sm text-muted-foreground">Carregando...</p>;
-  if (!data || data.length === 0) return <p className="py-12 text-center text-sm text-muted-foreground">Sem posts por enquanto. Volte em breve ou crie o primeiro 🔥</p>;
+  if (!data || data.length === 0) {
+    const msg =
+      mode === "following"
+        ? "Você ainda não segue ninguém com posts. Explore Recomendados ou Todos."
+        : "Sem posts por enquanto. Volte em breve ou crie o primeiro.";
+    return <p className="py-12 text-center text-sm text-muted-foreground">{msg}</p>;
+  }
   return (
     <div className="space-y-4 pt-3">
       {data.map((p) => <PostCard key={p.id} post={p} currentUserId={userId} defaultBlur={defaultBlur} />)}
