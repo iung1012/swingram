@@ -76,7 +76,7 @@ export function PostCard({
 
   const { data: comments } = useQuery({
     queryKey: ["post-comments", post.id, currentUserId],
-    enabled: showComments,
+    enabled: showComments || commentsOpen,
     queryFn: async () => {
       const { data: cs } = await supabase
         .from("comments")
