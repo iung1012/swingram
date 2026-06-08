@@ -36,6 +36,7 @@ function PublicProfile() {
   const qc = useQueryClient();
   const [reportOpen, setReportOpen] = useState(false);
   const [zoomPost, setZoomPost] = useState<{ id: string; url: string | null; kind: "image" | "video" | "text"; caption: string } | null>(null);
+  const [tab, setTab] = useState<"posts" | "photos">("posts");
 
 
   const { data: profile } = useQuery({
@@ -389,37 +390,50 @@ function PublicProfile() {
       </section>
 
       <section className="mt-7">
-        <div className="mb-2.5 flex items-center justify-between px-1">
-          <h2 className="inline-flex items-center gap-1.5 text-[13px] font-semibold tracking-tight">
-            <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+        <div className="mb-3 flex items-center gap-1 rounded-xl border border-border bg-card/40 p-1">
+          <button
+            type="button"
+            onClick={() => setTab("posts")}
+            className={`flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold tracking-tight transition-colors ${
+              tab === "posts"
+                ? "bg-secondary text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
             Postagens
-          </h2>
-          <span className="text-[11px] text-muted-foreground">{(postCards ?? []).length}</span>
-        </div>
-        {!postCards || postCards.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card/40 px-4 py-10 text-center">
-            <p className="text-[13px] text-muted-foreground">Nenhum post publicado.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {postCards.map((p) => (
-              <PostCard key={p.id} post={p} currentUserId={user?.id ?? null} defaultBlur={false} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="mt-10">
-        <div className="mb-2.5 flex items-center justify-between px-1">
-          <h2 className="inline-flex items-center gap-1.5 text-[13px] font-semibold tracking-tight">
-            <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+            <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+              {(postCards ?? []).length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("photos")}
+            className={`flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold tracking-tight transition-colors ${
+              tab === "photos"
+                ? "bg-secondary text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
             Fotos
-          </h2>
-          <span className="text-[11px] text-muted-foreground">
-            {(postCards ?? []).filter((p) => p.media.length > 0).length}
-          </span>
+            <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+              {(postCards ?? []).filter((p) => p.media.length > 0).length}
+            </span>
+          </button>
         </div>
-        {!postCards || postCards.filter((p) => p.media.length > 0).length === 0 ? (
+
+        {tab === "posts" ? (
+          !postCards || postCards.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card/40 px-4 py-10 text-center">
+              <p className="text-[13px] text-muted-foreground">Nenhum post publicado.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {postCards.map((p) => (
+                <PostCard key={p.id} post={p} currentUserId={user?.id ?? null} defaultBlur={false} />
+              ))}
+            </div>
+          )
+        ) : !postCards || postCards.filter((p) => p.media.length > 0).length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/40 px-4 py-10 text-center">
             <p className="text-[13px] text-muted-foreground">Nenhuma foto ou vídeo publicado.</p>
           </div>
