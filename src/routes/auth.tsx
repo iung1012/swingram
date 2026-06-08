@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { computeAge } from "@/lib/age";
 import { BrasaLogo, BrasaWordmark } from "@/components/brasa-logo";
 import { Mail, Lock, Calendar, ArrowRight } from "lucide-react";
+import { SpiralLoader } from "@/components/spiral-loader";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
