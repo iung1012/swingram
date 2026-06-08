@@ -21,7 +21,11 @@ import {
   Sparkles,
   Upload,
   Send,
+  Trash2,
 } from "lucide-react";
+
+const DRAFT_KEY_PREFIX = "brasa:create-draft:";
+type Draft = { caption: string; nsfw: boolean; savedAt: number };
 
 const MAX_IMAGE_MB = 8;
 const MAX_VIDEO_MB = 100;
@@ -60,6 +64,70 @@ function CreatePost() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const dragIndex = useRef<number | null>(null);
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
+  const draftLoadedRef = useRef(false);
+  const draftKey = user ? `${DRAFT_KEY_PREFIX}${user.id}` : null;
+
+  // Load draft on mount (per user)
+  useEffect(() => {
+    if (!draftKey || draftLoadedRef.current) return;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        const d = JSON.parse(raw) as Draft;
+        if (d && typeof d.caption === "string") {
+          setCaption(d.caption);
+          if (typeof d.nsfw === "boolean") setNsfw(d.nsfw);
+          setDraftSavedAt(d.savedAt ?? null);
+          if (d.caption.trim()) {
+            toast.message("Rascunho restaurado", {
+              description: "Continuamos de onde você parou.",
+            });
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+    draftLoadedRef.current = true;
+  }, [draftKey]);
+
+  // Auto-save draft (debounced)
+  useEffect(() => {
+    if (!draftKey || !draftLoadedRef.current) return;
+    const handle = setTimeout(() => {
+      try {
+        if (!caption.trim()) {
+          localStorage.removeItem(draftKey);
+          setDraftSavedAt(null);
+          return;
+        }
+        const now = Date.now();
+        const draft: Draft = { caption, nsfw, savedAt: now };
+        localStorage.setItem(draftKey, JSON.stringify(draft));
+        setDraftSavedAt(now);
+      } catch {
+        // ignore (quota, private mode, etc.)
+      }
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [caption, nsfw, draftKey]);
+
+  function clearDraft() {
+    if (!draftKey) return;
+    try {
+      localStorage.removeItem(draftKey);
+    } catch {
+      // ignore
+    }
+    setDraftSavedAt(null);
+  }
+
+  function discardDraft() {
+    setCaption("");
+    clearDraft();
+    toast.success("Rascunho descartado");
+  }
 
   const tags = useMemo(() => extractHashtags(caption), [caption]);
   const hasMedia = files.length > 0;
@@ -209,6 +277,7 @@ function CreatePost() {
       toast.success(
         hasMedia ? "Enviado. Aguardando aprovação da moderação." : "Publicado",
       );
+      clearDraft();
       nav({ to: "/profile" });
     } catch (e: any) {
       toast.error(e.message ?? "Erro ao postar");
@@ -425,21 +494,39 @@ function CreatePost() {
 
         {/* CAPTION */}
         <div className="border-b border-border p-4">
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex items-center justify-between gap-2">
             <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Descrição
             </span>
-            <span
-              className={`text-[11px] tabular-nums ${
-                pct >= 95
-                  ? "text-destructive"
-                  : pct >= 80
-                    ? "text-amber-500"
-                    : "text-muted-foreground"
-              }`}
-            >
-              {caption.length} / {MAX_CAPTION}
-            </span>
+            <div className="flex items-center gap-2">
+              {draftSavedAt && (
+                <span className="text-[11px] text-muted-foreground">
+                  Rascunho salvo {formatSavedAt(draftSavedAt)}
+                </span>
+              )}
+              {caption.length > 0 && (
+                <button
+                  type="button"
+                  onClick={discardDraft}
+                  className="inline-flex items-center gap-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
+                  aria-label="Descartar rascunho"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Descartar
+                </button>
+              )}
+              <span
+                className={`text-[11px] tabular-nums ${
+                  pct >= 95
+                    ? "text-destructive"
+                    : pct >= 80
+                      ? "text-amber-500"
+                      : "text-muted-foreground"
+                }`}
+              >
+                {caption.length} / {MAX_CAPTION}
+              </span>
+            </div>
           </div>
           <Textarea
             ref={textareaRef}
@@ -586,6 +673,22 @@ function CreatePost() {
       )}
     </div>
   );
+}
+
+function formatSavedAt(ts: number): string {
+  const diff = Math.max(0, Date.now() - ts);
+  const s = Math.floor(diff / 1000);
+  if (s < 5) return "agora";
+  if (s < 60) return `há ${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `há ${m}min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `há ${h}h`;
+  try {
+    return new Date(ts).toLocaleDateString("pt-BR");
+  } catch {
+    return "";
+  }
 }
 
 function renderCaption(text: string): {
