@@ -247,13 +247,14 @@ function CreatePost() {
         setSubmitting(false);
         return;
       }
+      const isVerified = profile?.verified ?? false;
       const { data: post, error } = await supabase
         .from("posts")
         .insert({
           user_id: user.id,
           caption,
           nsfw,
-          moderation_status: hasMedia ? "pending" : "approved",
+          moderation_status: hasMedia && !isVerified ? "pending" : "approved",
         })
         .select()
         .single();
