@@ -36,6 +36,7 @@ function PublicProfile() {
   const qc = useQueryClient();
   const [reportOpen, setReportOpen] = useState(false);
   const [zoomPost, setZoomPost] = useState<{ id: string; url: string | null; kind: "image" | "video" | "text"; caption: string } | null>(null);
+  const [tab, setTab] = useState<"posts" | "photos">("posts");
 
 
   const { data: profile } = useQuery({
