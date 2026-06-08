@@ -33,7 +33,7 @@ function PublicProfile() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [reportOpen, setReportOpen] = useState(false);
-  const [zoomPost, setZoomPost] = useState<{ id: string; url: string; caption: string } | null>(null);
+  const [zoomPost, setZoomPost] = useState<{ id: string; url: string | null; kind: "image" | "video" | "text"; caption: string } | null>(null);
 
 
   const { data: profile } = useQuery({
