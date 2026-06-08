@@ -70,7 +70,15 @@ export default function MapView() {
       dragRotate: false,
     });
     mapRef.current = map;
+    map.on("load", () => map.resize());
+    // Resize when container becomes visible/sized
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(mapContainer.current);
+    // safety: resize after layout settles
+    const t = setTimeout(() => map.resize(), 200);
     return () => {
+      clearTimeout(t);
+      ro.disconnect();
       map.remove();
       mapRef.current = null;
     };
