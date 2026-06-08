@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FireLike } from "./fire-like";
@@ -53,11 +53,62 @@ export function PostCard({
   const [saved, setSaved] = useState(post.saved_by_me);
   const [revealed, setRevealed] = useState(!post.nsfw || !defaultBlur);
   const [active, setActive] = useState(0);
+  const [showComments, setShowComments] = useState(false);
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
   const hasMedia = (post.media ?? []).length > 0;
   const current = post.media[active];
 
   useEffect(() => setRevealed(!post.nsfw || !defaultBlur), [post.nsfw, defaultBlur]);
   useEffect(() => { setLiked(post.liked_by_me); setLikes(post.likes_count); }, [post.liked_by_me, post.likes_count]);
+
+  const { data: comments } = useQuery({
+    queryKey: ["post-comments", post.id],
+    enabled: showComments,
+    queryFn: async () => {
+      const { data: cs } = await supabase
+        .from("comments")
+        .select("id, user_id, body, created_at")
+        .eq("post_id", post.id)
+        .eq("status", "visible")
+        .order("created_at", { ascending: true })
+        .limit(200);
+      const ids = Array.from(new Set((cs ?? []).map((c) => c.user_id)));
+      let profilesMap = new Map<string, any>();
+      if (ids.length) {
+        const { data: ps } = await supabase
+          .from("profiles")
+          .select("user_id, handle, display_name, avatar_url")
+          .in("user_id", ids);
+        profilesMap = new Map((ps ?? []).map((p: any) => [p.user_id, p]));
+      }
+      return (cs ?? []).map((c: any) => ({ ...c, profile: profilesMap.get(c.user_id) }));
+    },
+  });
+
+  async function submitComment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!currentUserId) {
+      toast.error("Faça login para comentar");
+      return;
+    }
+    const text = body.trim();
+    if (!text) return;
+    setSending(true);
+    const { error } = await supabase.from("comments").insert({
+      post_id: post.id,
+      user_id: currentUserId,
+      body: text,
+    });
+    setSending(false);
+    if (error) {
+      toast.error("Falha ao comentar");
+      return;
+    }
+    setBody("");
+    qc.invalidateQueries({ queryKey: ["post-comments", post.id] });
+    qc.invalidateQueries({ queryKey: ["feed"] });
+  }
 
   async function toggleLike() {
     if (!currentUserId) return;
@@ -193,10 +244,16 @@ export function PostCard({
       <div className="flex items-center justify-between px-3 py-2.5">
         <div className="flex items-center gap-4">
           <FireLike liked={liked} count={likes} onToggle={toggleLike} disabled={!currentUserId} />
-          <span className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => setShowComments((v) => !v)}
+            aria-label="Comentários"
+            aria-expanded={showComments}
+            className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+          >
             <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
-            {post.comments_count}
-          </span>
+            {comments?.length ?? post.comments_count}
+          </button>
         </div>
         <button
           onClick={toggleSave}
@@ -221,6 +278,56 @@ export function PostCard({
           </Link>
           {renderCaption(post.caption)}
         </p>
+      )}
+      {showComments && (
+        <div className="border-t border-border">
+          <div className="max-h-72 space-y-3 overflow-y-auto px-3 py-3">
+            {(comments ?? []).length === 0 ? (
+              <p className="text-center text-[12px] text-muted-foreground">
+                {comments ? "Seja o primeiro a comentar." : "Carregando…"}
+              </p>
+            ) : (
+              (comments ?? []).map((c: any) => (
+                <div key={c.id} className="flex gap-2.5">
+                  <VerifiedAvatar
+                    bucket="avatars"
+                    path={c.profile?.avatar_url}
+                    alt={c.profile?.display_name ?? ""}
+                    verified={false}
+                    className="h-7 w-7 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px]">
+                      <span className="font-semibold">@{c.profile?.handle ?? "user"}</span>{" "}
+                      <span className="text-foreground/90">{c.body}</span>
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <form
+            onSubmit={submitComment}
+            className="flex items-center gap-2 border-t border-border bg-card/95 px-3 py-2"
+          >
+            <input
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder={currentUserId ? "Adicione um comentário…" : "Faça login para comentar"}
+              disabled={!currentUserId || sending}
+              maxLength={500}
+              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-primary"
+            />
+            <button
+              type="submit"
+              disabled={!currentUserId || sending || !body.trim()}
+              className="rounded-md px-3 py-2 text-[13px] font-medium text-primary-foreground disabled:opacity-50"
+              style={{ background: "var(--gradient-brasa-h)" }}
+            >
+              Enviar
+            </button>
+          </form>
+        </div>
       )}
     </article>
   );
