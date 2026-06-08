@@ -135,8 +135,9 @@ export function StoriesRail() {
     setOpenGroupIdx(idx);
   }
 
-  function markViewed(id: string) {
+  const markViewed = useCallback((id: string) => {
     setViewed((prev) => {
+      if (prev.has(id)) return prev;
       const next = new Set(prev);
       next.add(id);
       try {
@@ -144,7 +145,29 @@ export function StoriesRail() {
       } catch {}
       return next;
     });
-  }
+  }, []);
+
+  const deleteStory = useCallback(
+    async (id: string) => {
+      if (!user) return;
+      const grp = groups?.find((g) => g.user_id === user.id);
+      const row = grp?.rows.find((r) => r.id === id);
+      try {
+        if (row?.media_url) {
+          await supabase.storage.from("stories").remove([row.media_url]);
+        }
+        const { error } = await supabase.from("stories").delete().eq("id", id);
+        if (error) throw error;
+        toast.success("Story excluído");
+        // If this was the last one, close the viewer
+        if ((grp?.rows.length ?? 0) <= 1) setOpenGroupIdx(null);
+        qc.invalidateQueries({ queryKey: ["stories-rail"] });
+      } catch (err: any) {
+        toast.error(err.message ?? "Falha ao excluir");
+      }
+    },
+    [user, groups, qc]
+  );
 
   const orderedGroups: Group[] = useMemo(() => {
     const list: Group[] = [];
