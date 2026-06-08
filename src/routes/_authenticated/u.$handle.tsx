@@ -353,19 +353,43 @@ function PublicProfile() {
           <div className="grid grid-cols-3 gap-1.5">
             {posts.map((p: any) => {
               const first = (p.post_media ?? []).sort((a: any, b: any) => a.order - b.order)[0];
+              const kind: "image" | "video" | "text" = first ? first.kind ?? "image" : "text";
               return (
                 <button
                   type="button"
                   key={p.id}
-                  onClick={() => first?.url && setZoomPost({ id: p.id, url: first.url, caption: p.caption ?? "" })}
-                  className="overflow-hidden rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                  onClick={() =>
+                    setZoomPost({
+                      id: p.id,
+                      url: first?.url ?? null,
+                      kind,
+                      caption: p.caption ?? "",
+                    })
+                  }
+                  className="group relative overflow-hidden rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
                 >
-                  <SignedImage
-                    bucket="posts"
-                    path={first?.url}
-                    alt=""
-                    className="aspect-square w-full object-cover transition-transform hover:scale-105"
-                  />
+                  {kind === "text" ? (
+                    <div className="flex aspect-square w-full items-center justify-center bg-secondary/40 p-2">
+                      <p className="line-clamp-5 text-center text-[11px] leading-snug text-foreground/90">
+                        {p.caption || "(sem texto)"}
+                      </p>
+                    </div>
+                  ) : (
+                    <SignedMedia
+                      bucket="posts"
+                      path={first?.url}
+                      kind={kind}
+                      alt=""
+                      controls={false}
+                      muted
+                      className="aspect-square w-full object-cover transition-transform group-hover:scale-105"
+                    />
+                  )}
+                  {kind === "video" && (
+                    <span className="pointer-events-none absolute right-1.5 top-1.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur">
+                      ▶ vídeo
+                    </span>
+                  )}
                 </button>
               );
             })}
