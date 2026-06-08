@@ -88,7 +88,7 @@ function ChatRoom() {
         <Link to="/chat" className="rounded-md p-2 hover:bg-secondary"><ArrowLeft className="h-4 w-4" /></Link>
         {other && (
           <Link to={"/u/$handle" as never} params={{ handle: other.handle } as never} className="flex flex-1 items-center gap-2">
-            <SignedImage bucket="avatars" path={other.avatar_url} alt={other.display_name} className="h-9 w-9 rounded-full object-cover" />
+            <VerifiedAvatar bucket="avatars" path={other.avatar_url} alt={other.display_name} verified={other.verified} className="h-9 w-9" />
             <div><p className="text-sm font-semibold">{other.display_name}</p><p className="text-xs text-muted-foreground">@{other.handle}</p></div>
           </Link>
         )}
