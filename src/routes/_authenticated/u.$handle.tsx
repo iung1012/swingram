@@ -328,23 +328,6 @@ function PublicProfile() {
                 <Share2 className="h-3.5 w-3.5" strokeWidth={2} />
                 Compartilhar
               </button>
-              <ReportDialog
-                targetType="user"
-                targetId={profile.user_id}
-                trigger={
-                  <button className="flex h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-[13px] font-medium text-muted-foreground hover:text-foreground">
-                    <Flag className="h-3.5 w-3.5" strokeWidth={2} />
-                    Denunciar
-                  </button>
-                }
-              />
-              <button
-                onClick={blockUser}
-                className="flex h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-[13px] font-medium text-destructive hover:bg-secondary/60"
-              >
-                <Ban className="h-3.5 w-3.5" strokeWidth={2} />
-                Bloquear
-              </button>
             </div>
           )}
         </div>
