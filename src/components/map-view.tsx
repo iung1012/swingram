@@ -227,10 +227,10 @@ export default function MapView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerEl]);
 
-  // self marker + recenter when profile loads
+  // self marker + recenter whenever our position changes
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !me?.lat_snap || !me?.lng_snap) return;
+    if (!map || !selfPos) return;
 
     const icon = L.divIcon({
       className: "",
@@ -240,13 +240,12 @@ export default function MapView() {
     });
 
     if (!selfMarkerRef.current) {
-      selfMarkerRef.current = L.marker([me.lat_snap, me.lng_snap], { icon }).addTo(map);
+      selfMarkerRef.current = L.marker([selfPos.lat, selfPos.lng], { icon }).addTo(map);
+      map.setView([selfPos.lat, selfPos.lng], 12);
     } else {
-      selfMarkerRef.current.setLatLng([me.lat_snap, me.lng_snap]);
+      selfMarkerRef.current.setLatLng([selfPos.lat, selfPos.lng]);
     }
-
-    map.setView([me.lat_snap, me.lng_snap], 12);
-  }, [me?.lat_snap, me?.lng_snap]);
+  }, [selfPos?.lat, selfPos?.lng]);
 
   const zoom = (delta: number) => {
     const map = mapRef.current;
@@ -254,15 +253,16 @@ export default function MapView() {
     map.setZoom(map.getZoom() + delta);
   };
   const recenter = () => {
-    if (me?.lat_snap && me?.lng_snap) {
-      mapRef.current?.setView([me.lat_snap, me.lng_snap], 13);
+    requestLocation();
+    if (selfPos) {
+      mapRef.current?.setView([selfPos.lat, selfPos.lng], 13);
     }
   };
   const fit = () => {
     const map = mapRef.current;
     if (!map) return;
     const pts: L.LatLngTuple[] = [];
-    if (me?.lat_snap && me?.lng_snap) pts.push([me.lat_snap, me.lng_snap]);
+    if (selfPos) pts.push([selfPos.lat, selfPos.lng]);
     profilesRef.current.forEach((p) => pts.push([p.lat_snap, p.lng_snap]));
     if (pts.length < 2) return;
     map.fitBounds(L.latLngBounds(pts), { padding: [60, 60], maxZoom: 13 });
