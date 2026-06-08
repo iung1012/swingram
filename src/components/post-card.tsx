@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck, Heart, Trash2, X } from "lucide-react";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Loader2, MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck, Heart, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FireLike } from "./fire-like";
 import { SignedMedia } from "./signed-media";
@@ -74,18 +74,31 @@ export function PostCard({
   useEffect(() => setRevealed(!post.nsfw || !defaultBlur), [post.nsfw, defaultBlur]);
   useEffect(() => { setLiked(post.liked_by_me); setLikes(post.likes_count); }, [post.liked_by_me, post.likes_count]);
 
-  const { data: comments } = useQuery({
+  const COMMENTS_PAGE_SIZE = 15;
+  const {
+    data: commentsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: commentsLoading,
+  } = useInfiniteQuery({
     queryKey: ["post-comments", post.id, currentUserId],
     enabled: showComments || commentsOpen,
-    queryFn: async () => {
-      const { data: cs } = await supabase
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage: any) => lastPage.nextCursor as string | null,
+    queryFn: async ({ pageParam }) => {
+      let q = supabase
         .from("comments")
         .select("id, user_id, body, created_at")
         .eq("post_id", post.id)
         .eq("status", "visible")
-        .order("created_at", { ascending: true })
-        .limit(200);
-      const list = cs ?? [];
+        .order("created_at", { ascending: false })
+        .limit(COMMENTS_PAGE_SIZE + 1);
+      if (pageParam) q = q.lt("created_at", pageParam);
+      const { data: cs } = await q;
+      const rows = cs ?? [];
+      const hasMore = rows.length > COMMENTS_PAGE_SIZE;
+      const list = hasMore ? rows.slice(0, COMMENTS_PAGE_SIZE) : rows;
       const commentIds = list.map((c) => c.id);
       const ids = Array.from(new Set(list.map((c) => c.user_id)));
       let profilesMap = new Map<string, any>();
@@ -96,7 +109,7 @@ export function PostCard({
           .in("user_id", ids);
         profilesMap = new Map((ps ?? []).map((p: any) => [p.user_id, p]));
       }
-      let likesByComment = new Map<string, { count: number; mine: boolean; byAuthor: boolean }>();
+      const likesByComment = new Map<string, { count: number; mine: boolean; byAuthor: boolean }>();
       if (commentIds.length) {
         const { data: cls } = await supabase
           .from("comment_likes")
@@ -110,15 +123,35 @@ export function PostCard({
           likesByComment.set(cl.comment_id, prev);
         });
       }
-      return list.map((c: any) => ({
+      const items = list.map((c: any) => ({
         ...c,
         profile: profilesMap.get(c.user_id),
         likes: likesByComment.get(c.id)?.count ?? 0,
         liked_by_me: likesByComment.get(c.id)?.mine ?? false,
         liked_by_author: likesByComment.get(c.id)?.byAuthor ?? false,
       }));
+      return {
+        items,
+        nextCursor: hasMore ? list[list.length - 1].created_at : null,
+      };
     },
   });
+
+  // Flatten pages (desc fetched) then reverse to render ascending (oldest -> newest).
+  const comments = useMemo(() => {
+    if (!commentsData) return undefined;
+    const all = commentsData.pages.flatMap((p: any) => p.items);
+    return [...all].reverse();
+  }, [commentsData]);
+
+  const inlineScrollRef = useRef<HTMLDivElement | null>(null);
+  const dialogScrollRef = useRef<HTMLDivElement | null>(null);
+
+  function onCommentsScroll(e: React.UIEvent<HTMLDivElement>) {
+    if (!hasNextPage || isFetchingNextPage) return;
+    if (e.currentTarget.scrollTop < 40) fetchNextPage();
+  }
+
 
   const { data: likers } = useQuery({
     queryKey: ["post-likers", post.id],
@@ -371,7 +404,7 @@ export function PostCard({
                   className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
                 >
                   <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
-                  {comments?.length ?? post.comments_count}
+                  {post.comments_count}
                 </button>
               </DialogTrigger>
             </Dialog>
@@ -384,7 +417,7 @@ export function PostCard({
               className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
             >
               <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
-              {comments?.length ?? post.comments_count}
+              {post.comments_count}
             </button>
           )}
         </div>
@@ -414,11 +447,28 @@ export function PostCard({
       )}
       {!commentsAsDialog && showComments && (
         <div className="border-t border-border">
-          <div className="max-h-72 space-y-3 overflow-y-auto px-3 py-3">
-            {(comments ?? []).length === 0 ? (
-              <p className="text-center text-[12px] text-muted-foreground">
-                {comments ? "Seja o primeiro a comentar." : "Carregando…"}
-              </p>
+          <div
+            ref={inlineScrollRef}
+            onScroll={onCommentsScroll}
+            className="max-h-72 space-y-3 overflow-y-auto px-3 py-3"
+          >
+            {hasNextPage && (
+              <button
+                type="button"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="mx-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-50"
+              >
+                {isFetchingNextPage ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : null}
+                Ver comentários anteriores
+              </button>
+            )}
+            {commentsLoading ? (
+              <p className="text-center text-[12px] text-muted-foreground">Carregando…</p>
+            ) : (comments ?? []).length === 0 ? (
+              <p className="text-center text-[12px] text-muted-foreground">Seja o primeiro a comentar.</p>
             ) : (
               (comments ?? []).map((c: any) => {
                 const isOwn = c.user_id === currentUserId;
@@ -522,11 +572,28 @@ export function PostCard({
             <DialogHeader className="px-5 pt-5 pb-3">
               <DialogTitle className="text-[15px]">Comentários</DialogTitle>
             </DialogHeader>
-            <div className="max-h-[60vh] space-y-3 overflow-y-auto px-5 pb-3">
-              {(comments ?? []).length === 0 ? (
-                <p className="text-center text-[12px] text-muted-foreground">
-                  {comments ? "Seja o primeiro a comentar." : "Carregando…"}
-                </p>
+            <div
+              ref={dialogScrollRef}
+              onScroll={onCommentsScroll}
+              className="max-h-[60vh] space-y-3 overflow-y-auto px-5 pb-3"
+            >
+              {hasNextPage && (
+                <button
+                  type="button"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="mx-auto flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-50"
+                >
+                  {isFetchingNextPage ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : null}
+                  Ver comentários anteriores
+                </button>
+              )}
+              {commentsLoading ? (
+                <p className="text-center text-[12px] text-muted-foreground">Carregando…</p>
+              ) : (comments ?? []).length === 0 ? (
+                <p className="text-center text-[12px] text-muted-foreground">Seja o primeiro a comentar.</p>
               ) : (
                 (comments ?? []).map((c: any) => {
                   const isOwn = c.user_id === currentUserId;
