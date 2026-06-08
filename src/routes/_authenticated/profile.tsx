@@ -389,40 +389,85 @@ function MyProfile() {
       </section>
 
       <section className="mt-7">
-        <div className="mb-2.5 flex items-center justify-between px-1">
-          <h2 className="inline-flex items-center gap-1.5 text-[13px] font-semibold tracking-tight text-foreground">
-            <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
-            Seus posts
-          </h2>
-          <span className="text-[11px] text-muted-foreground">{totalCount}</span>
+        <div className="mb-3 flex items-center gap-1 rounded-xl border border-border bg-card/40 p-1">
+          <button
+            type="button"
+            onClick={() => setTab("posts")}
+            className={`flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold tracking-tight transition-colors ${
+              tab === "posts"
+                ? "bg-secondary text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Postagens
+            <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+              {(posts ?? []).length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("photos")}
+            className={`flex-1 rounded-lg px-3 py-2 text-[12px] font-semibold tracking-tight transition-colors ${
+              tab === "photos"
+                ? "bg-secondary text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Imagens
+            <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+              {(posts ?? []).filter((p) => p.media.length > 0).length}
+            </span>
+          </button>
         </div>
-        {!posts || posts.length === 0 ? (
+
+        {tab === "posts" ? (
+          !posts || posts.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card/40 px-4 py-10 text-center">
+              <p className="text-[13px] text-muted-foreground">Nenhum post ainda.</p>
+              <Link
+                to="/create"
+                className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-secondary/60 px-3 text-[13px] font-medium hover:bg-secondary"
+              >
+                Criar primeiro post
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {posts.map((p) => (
+                <div key={p.id} className="relative">
+                  {p.moderation_status !== "approved" && (
+                    <span className="absolute left-3 top-3 z-10 rounded-md border border-border bg-background/85 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-foreground/90 backdrop-blur">
+                      {p.moderation_status === "pending" ? "Em análise" : "Rejeitado"}
+                    </span>
+                  )}
+                  <PostCard
+                    post={p}
+                    currentUserId={user?.id ?? null}
+                    defaultBlur={(profile as any)?.nsfw_blur_default ?? true}
+                    commentsAsDialog
+                  />
+                </div>
+              ))}
+            </div>
+          )
+        ) : !posts || posts.filter((p) => p.media.length > 0).length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card/40 px-4 py-10 text-center">
-            <p className="text-[13px] text-muted-foreground">Nenhum post ainda.</p>
-            <Link
-              to="/create"
-              className="mt-3 inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-secondary/60 px-3 text-[13px] font-medium hover:bg-secondary"
-            >
-              Criar primeiro post
-            </Link>
+            <p className="text-[13px] text-muted-foreground">Nenhuma foto ou vídeo publicado.</p>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-1.5">
-            {posts.map((p: any) => {
-              const first = (p.post_media ?? []).sort((a: any, b: any) => a.order - b.order)[0];
-              const kind: "image" | "video" | "text" = first ? first.kind ?? "image" : "text";
-              return (
-                <div
-                  key={p.id}
-                  className="group relative overflow-hidden rounded-lg border border-border bg-card"
-                >
-                  {kind === "text" ? (
-                    <div className="flex aspect-square w-full items-center justify-center bg-secondary/40 p-2">
-                      <p className="line-clamp-5 text-center text-[11px] leading-snug text-foreground/90">
-                        {p.caption || "(sem texto)"}
-                      </p>
-                    </div>
-                  ) : (
+            {posts
+              .filter((p) => p.media.length > 0)
+              .map((p) => {
+                const first = p.media[0];
+                const kind = (first?.kind ?? "image") as "image" | "video";
+                return (
+                  <Link
+                    key={p.id}
+                    to={"/post/$id" as never}
+                    params={{ id: p.id } as never}
+                    className="group relative overflow-hidden rounded-lg border border-border bg-card"
+                  >
                     <SignedMedia
                       bucket="posts"
                       path={first?.url}
@@ -430,22 +475,21 @@ function MyProfile() {
                       alt=""
                       controls={false}
                       muted
-                      className="aspect-square w-full object-cover"
+                      className="aspect-square w-full object-cover transition-transform group-hover:scale-105"
                     />
-                  )}
-                  {kind === "video" && (
-                    <span className="pointer-events-none absolute right-1.5 top-1.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur">
-                      ▶ vídeo
-                    </span>
-                  )}
-                  {p.moderation_status !== "approved" && (
-                    <span className="absolute left-1.5 top-1.5 rounded-md border border-border bg-background/85 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-foreground/90 backdrop-blur">
-                      {p.moderation_status === "pending" ? "Análise" : "Rejeitado"}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+                    {kind === "video" && (
+                      <span className="pointer-events-none absolute right-1.5 top-1.5 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur">
+                        ▶ vídeo
+                      </span>
+                    )}
+                    {p.moderation_status !== "approved" && (
+                      <span className="absolute left-1.5 top-1.5 rounded-md border border-border bg-background/85 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-foreground/90 backdrop-blur">
+                        {p.moderation_status === "pending" ? "Análise" : "Rejeitado"}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
           </div>
         )}
       </section>
