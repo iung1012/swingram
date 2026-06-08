@@ -418,11 +418,13 @@ function PublicProfile() {
 function ZoomPostContent({
   postId,
   url,
+  kind,
   caption,
   currentUserId,
 }: {
   postId: string;
-  url: string;
+  url: string | null;
+  kind: "image" | "video" | "text";
   caption: string;
   currentUserId: string | null;
 }) {
@@ -476,16 +478,27 @@ function ZoomPostContent({
     qc.invalidateQueries({ queryKey: ["post-comments", postId] });
   }
 
+  const showMediaPane = kind !== "text" && !!url;
+
   return (
-    <div className="grid max-h-[85vh] grid-cols-1 overflow-hidden md:grid-cols-[1.2fr_1fr]">
-      <div className="flex items-center justify-center bg-black">
-        <SignedImage
-          bucket="posts"
-          path={url}
-          alt=""
-          className="max-h-[85vh] w-full object-contain"
-        />
-      </div>
+    <div
+      className={
+        "grid max-h-[85vh] grid-cols-1 overflow-hidden " +
+        (showMediaPane ? "md:grid-cols-[1.2fr_1fr]" : "")
+      }
+    >
+      {showMediaPane && (
+        <div className="flex items-center justify-center bg-black">
+          <SignedMedia
+            bucket="posts"
+            path={url}
+            kind={kind === "video" ? "video" : "image"}
+            alt=""
+            controls={kind === "video"}
+            className="max-h-[85vh] w-full object-contain"
+          />
+        </div>
+      )}
       <div className="flex max-h-[85vh] flex-col">
         {caption && (
           <div className="border-b border-border px-4 py-3 text-[14px] leading-relaxed text-foreground/90">
