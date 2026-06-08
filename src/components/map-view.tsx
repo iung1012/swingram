@@ -76,7 +76,7 @@ export default function MapView() {
     [me?.lat_snap, me?.lng_snap]
   );
 
-  const mapContainer = useRef<HTMLDivElement | null>(null);
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const selfMarkerRef = useRef<L.Marker | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
@@ -88,8 +88,8 @@ export default function MapView() {
 
   // init map
   useEffect(() => {
-    console.log("[MapView] init effect", { hasContainer: !!mapContainer.current, hasMap: !!mapRef.current });
-    if (!mapContainer.current || mapRef.current) return;
+    console.log("[MapView] init effect", { hasContainer: !!containerEl, hasMap: !!mapRef.current });
+    if (!containerEl || mapRef.current) return;
     try {
       const map = L.map(mapContainer.current, {
         center,
