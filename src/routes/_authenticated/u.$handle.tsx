@@ -433,6 +433,41 @@ function ZoomPostContent({
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
 
+  const { data: likeData } = useQuery({
+    queryKey: ["post-likes", postId, currentUserId],
+    enabled: !!currentUserId,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("likes")
+        .select("post_id", { count: "exact", head: true })
+        .eq("post_id", postId);
+      const { data: me } = await supabase
+        .from("likes")
+        .select("post_id")
+        .eq("post_id", postId)
+        .eq("user_id", currentUserId!)
+        .maybeSingle();
+      return { likes: count ?? 0, likedByMe: !!me };
+    },
+  });
+
+  const [liked, setLiked] = useState(likeData?.likedByMe ?? false);
+  const [likes, setLikes] = useState(likeData?.likes ?? 0);
+
+  async function toggleLike() {
+    if (!currentUserId) return;
+    const next = !liked;
+    setLiked(next);
+    setLikes((l) => l + (next ? 1 : -1));
+    if (next) {
+      await supabase.from("likes").insert({ post_id: postId, user_id: currentUserId });
+    } else {
+      await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", currentUserId);
+    }
+    qc.invalidateQueries({ queryKey: ["post-likes", postId] });
+    qc.invalidateQueries({ queryKey: ["post-likes", postId, currentUserId] });
+  }
+
   const { data: comments } = useQuery({
     queryKey: ["post-comments", postId],
     queryFn: async () => {
@@ -501,6 +536,18 @@ function ZoomPostContent({
         </div>
       )}
       <div className="flex max-h-[85vh] flex-col">
+        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+          <FireLike
+            liked={liked}
+            count={likes}
+            onToggle={toggleLike}
+            disabled={!currentUserId}
+          />
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
+            <MessageCircle className="h-3.5 w-3.5" strokeWidth={2.2} />
+            {(comments ?? []).length}
+          </span>
+        </div>
         {caption && (
           <div className="whitespace-pre-wrap border-b border-border px-4 py-3 text-[14px] leading-relaxed text-foreground/90">
             {renderCaption(caption)}
