@@ -21,7 +21,7 @@ function Settings() {
   if (!profile) return <p className="p-6 text-center">Carregando...</p>;
 
   async function toggle(field: "share_location" | "invisible_mode" | "nsfw_blur_default", value: boolean) {
-    await supabase.from("profiles").update({ [field]: value }).eq("user_id", user!.id);
+    await supabase.from("profiles").update({ [field]: value } as never).eq("user_id", user!.id);
     refetch();
   }
 
