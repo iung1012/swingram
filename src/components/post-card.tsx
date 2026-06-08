@@ -244,10 +244,16 @@ export function PostCard({
       <div className="flex items-center justify-between px-3 py-2.5">
         <div className="flex items-center gap-4">
           <FireLike liked={liked} count={likes} onToggle={toggleLike} disabled={!currentUserId} />
-          <span className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => setShowComments((v) => !v)}
+            aria-label="Comentários"
+            aria-expanded={showComments}
+            className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+          >
             <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
-            {post.comments_count}
-          </span>
+            {comments?.length ?? post.comments_count}
+          </button>
         </div>
         <button
           onClick={toggleSave}
