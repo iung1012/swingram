@@ -53,6 +53,7 @@ export const Route = createFileRoute("/_authenticated/create")({
 
 function CreatePost() {
   const nav = useNavigate();
+  const qc = useQueryClient();
   const { user } = useAuth();
   const [files, setFiles] = useState<Picked[]>([]);
   const [active, setActive] = useState(0);
