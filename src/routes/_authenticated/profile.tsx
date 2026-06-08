@@ -11,7 +11,7 @@ import { Settings, BadgeCheck, Shield, LogOut, Heart } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Meu perfil — Spark" }] }),
+  head: () => ({ meta: [{ title: "Meu perfil — Brasa Swing" }] }),
   component: MyProfile,
 });
 

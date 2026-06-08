@@ -9,7 +9,7 @@ import { Flame } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/home")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Início — Spark" }] }),
+  head: () => ({ meta: [{ title: "Início — Brasa Swing" }] }),
   component: Home,
 });
 
@@ -78,7 +78,7 @@ function Home() {
   return (
     <div className="mx-auto max-w-2xl px-3 pt-3">
       <header className="mb-3 flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-xl font-bold"><Flame className="text-primary" /> Spark</h1>
+        <h1 className="flex items-center gap-2 text-xl font-bold"><Flame className="text-primary" /> Brasa Swing</h1>
       </header>
       <Tabs defaultValue="recommended">
         <TabsList className="grid w-full grid-cols-2">

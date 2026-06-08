@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/interests")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Interesses — Spark" }] }),
+  head: () => ({ meta: [{ title: "Interesses — Brasa Swing" }] }),
   component: InterestsPage,
 });
 

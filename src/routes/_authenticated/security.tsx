@@ -14,7 +14,7 @@ import QRCode from "qrcode";
 
 export const Route = createFileRoute("/_authenticated/security")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Segurança — Spark" }] }),
+  head: () => ({ meta: [{ title: "Segurança — Brasa Swing" }] }),
   component: SecurityPage,
 });
 
@@ -54,7 +54,7 @@ function SecurityPage() {
     if (!user) return;
     const secret = randomBase32();
     const totp = new OTPAuth.TOTP({
-      issuer: "Spark",
+      issuer: "Brasa Swing",
       label: user.email ?? "user",
       algorithm: "SHA1", digits: 6, period: 30,
       secret: OTPAuth.Secret.fromBase32(secret),
@@ -66,7 +66,7 @@ function SecurityPage() {
   async function enable() {
     if (!setup || !user) return;
     const totp = new OTPAuth.TOTP({
-      issuer: "Spark", label: user.email ?? "user",
+      issuer: "Brasa Swing", label: user.email ?? "user",
       algorithm: "SHA1", digits: 6, period: 30,
       secret: OTPAuth.Secret.fromBase32(setup.secret),
     });

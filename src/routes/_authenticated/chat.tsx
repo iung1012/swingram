@@ -9,7 +9,7 @@ import { Flame } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/chat")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Chat — Spark" }] }),
+  head: () => ({ meta: [{ title: "Chat — Brasa Swing" }] }),
   component: ChatList,
 });
 

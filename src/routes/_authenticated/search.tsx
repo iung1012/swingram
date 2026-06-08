@@ -13,7 +13,7 @@ import { VerifiedBadge } from "@/components/verified-badge";
 
 export const Route = createFileRoute("/_authenticated/search")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Buscar — Spark" }] }),
+  head: () => ({ meta: [{ title: "Buscar — Brasa Swing" }] }),
   component: Search,
 });
 

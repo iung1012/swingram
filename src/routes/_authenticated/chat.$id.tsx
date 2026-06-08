@@ -15,7 +15,7 @@ import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/chat/$id")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Conversa — Spark" }] }),
+  head: () => ({ meta: [{ title: "Conversa — Brasa Swing" }] }),
   component: ChatRoom,
 });
 
