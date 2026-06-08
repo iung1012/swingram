@@ -5,18 +5,33 @@ import { BottomNav } from "@/components/bottom-nav";
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async ({ location }) => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
+    // Use getSession (reads from localStorage, no network) to avoid intermittent
+    // "Load failed" fetch aborts on Safari right after sign-in navigation.
+    let { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      // Fallback to network check in case session hasn't been hydrated yet.
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (data.user) {
+          const refreshed = await supabase.auth.getSession();
+          session = refreshed.data.session;
+        }
+      } catch {
+        // network error — fall through to redirect
+      }
+    }
+    if (!session?.user) throw redirect({ to: "/auth" });
+    const user = session.user;
     // Check profile completion
     const { data: profile } = await supabase
       .from("profiles")
       .select("onboarding_complete")
-      .eq("user_id", data.user.id)
+      .eq("user_id", user.id)
       .maybeSingle();
     if (!profile?.onboarding_complete && !location.pathname.startsWith("/onboarding")) {
       throw redirect({ to: "/onboarding" });
     }
-    return { user: data.user };
+    return { user };
   },
   component: AuthedLayout,
 });
