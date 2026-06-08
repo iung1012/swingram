@@ -30,7 +30,6 @@ export const Route = createFileRoute("/_authenticated/profile")({
 
 function MyProfile() {
   const { user } = useAuth();
-  const nav = useNavigate();
   const qc = useQueryClient();
   const { data: profile } = useMyProfile(user?.id);
   const { data: roles } = useIsStaff(user?.id);
@@ -51,11 +50,6 @@ function MyProfile() {
       return data ?? [];
     },
   });
-
-  async function logout() {
-    await supabase.auth.signOut();
-    nav({ to: "/auth" });
-  }
 
   async function uploadImage(
     kind: "avatar" | "banner",
@@ -248,14 +242,6 @@ function MyProfile() {
           </>
         )}
       </section>
-
-      <button
-        onClick={logout}
-        className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-[14px] font-medium text-destructive transition-colors hover:bg-secondary/60"
-      >
-        <LogOut className="h-4 w-4" strokeWidth={2} />
-        Sair da conta
-      </button>
 
       <section className="mt-7">
         <div className="mb-2.5 flex items-center justify-between px-1">
