@@ -122,11 +122,12 @@ function Search() {
                 params={{ handle: p.handle } as never}
                 className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-secondary/40"
               >
-                <SignedImage
+                <VerifiedAvatar
                   bucket="avatars"
                   path={p.avatar_url}
                   alt={p.display_name}
-                  className="h-11 w-11 rounded-full object-cover ring-1 ring-border"
+                  verified={p.verified}
+                  className="h-11 w-11"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-1 truncate text-[14px] font-medium tracking-tight">
