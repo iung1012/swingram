@@ -40,6 +40,28 @@ function MyProfile() {
   const avatarInput = useRef<HTMLInputElement | null>(null);
   const bannerInput = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState<"avatar" | "banner" | null>(null);
+  const [editingBio, setEditingBio] = useState(false);
+  const [bioDraft, setBioDraft] = useState("");
+  const [savingBio, setSavingBio] = useState(false);
+
+  async function saveBio() {
+    if (!user) return;
+    setSavingBio(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ bio: bioDraft.trim() } as never)
+      .eq("user_id", user.id);
+    setSavingBio(false);
+    if (error) {
+      toast.error("Falha ao salvar descrição");
+      return;
+    }
+    toast.success("Descrição atualizada");
+    setEditingBio(false);
+    qc.invalidateQueries({ queryKey: ["profile", user.id] });
+    qc.invalidateQueries({ queryKey: ["my-profile", user.id] });
+  }
+
 
   const { data: posts } = useQuery({
     queryKey: ["my-posts", user?.id],
