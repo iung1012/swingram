@@ -7,7 +7,7 @@ import { SignedImage } from "@/components/signed-image";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Settings, BadgeCheck, Shield, LogOut } from "lucide-react";
+import { Settings, BadgeCheck, Shield, LogOut, Heart } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   ssr: false,
@@ -64,6 +64,7 @@ function MyProfile() {
             <Button asChild variant="default" size="sm"><Link to="/verify"><BadgeCheck className="mr-1 h-4 w-4" /> Verificar</Link></Button>
           )}
           <Button asChild variant="outline" size="sm"><Link to="/settings"><Settings className="mr-1 h-4 w-4" /> Configurações</Link></Button>
+          <Button asChild variant="outline" size="sm" className="col-span-2"><Link to="/couple"><Heart className="mr-1 h-4 w-4" /> Vínculo de casal</Link></Button>
           {roles?.admin && (
             <Button asChild variant="secondary" size="sm" className="col-span-2"><Link to="/admin"><Shield className="mr-1 h-4 w-4" /> Painel admin</Link></Button>
           )}

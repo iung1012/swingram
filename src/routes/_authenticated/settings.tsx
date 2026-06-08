@@ -35,6 +35,24 @@ function Settings() {
     });
   }
 
+  async function exportData() {
+    if (!user) return;
+    const [{ data: prof }, { data: posts }, { data: msgs }, { data: likes }, { data: comments }] = await Promise.all([
+      supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.from("posts").select("*, post_media(*)").eq("user_id", user.id),
+      supabase.from("messages").select("*").eq("sender_id", user.id),
+      supabase.from("likes").select("*").eq("user_id", user.id),
+      supabase.from("comments").select("*").eq("user_id", user.id),
+    ]);
+    const payload = { exported_at: new Date().toISOString(), profile: prof, posts, messages: msgs, likes, comments };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `spark-meus-dados-${Date.now()}.json`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Download iniciado");
+  }
+
   async function deleteAccount() {
     if (!confirm("Tem certeza? Sua conta e dados serão removidos.")) return;
     await supabase.from("profiles").update({ banned: true }).eq("user_id", user!.id);
@@ -52,6 +70,11 @@ function Settings() {
         <Row label="Modo invisível" desc="Some do mapa mas vê os outros" checked={profile.invisible_mode} onChange={(v) => toggle("invisible_mode", v)} />
         <Row label="Blur em NSFW por padrão" desc="Conteúdo +18 começa borrado" checked={profile.nsfw_blur_default} onChange={(v) => toggle("nsfw_blur_default", v)} />
         <Button variant="outline" size="sm" className="w-full" onClick={refreshLocation}>Atualizar minha localização</Button>
+      </Card>
+
+      <Card className="space-y-3 p-4">
+        <h2 className="font-semibold">Seus dados (LGPD)</h2>
+        <Button variant="outline" className="w-full" onClick={exportData}>Exportar meus dados (JSON)</Button>
       </Card>
 
       <Card className="space-y-3 p-4">
