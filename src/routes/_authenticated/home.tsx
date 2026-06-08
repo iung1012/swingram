@@ -38,7 +38,7 @@ async function fetchFeed(currentUserId: string | null, mode: FeedMode, interests
     .from("posts")
     .select(`
       id, user_id, caption, nsfw, created_at,
-      post_media(url, order)
+      post_media(url, order, kind)
     `)
     .eq("moderation_status", "approved")
     .is("deleted_at", null)
