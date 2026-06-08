@@ -408,7 +408,7 @@ export function PostCard({
                   className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
                 >
                   <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
-                  {post.comments_count}
+                  {commentsCount}
                 </button>
               </DialogTrigger>
             </Dialog>
@@ -421,7 +421,7 @@ export function PostCard({
               className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
             >
               <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
-              {post.comments_count}
+              {commentsCount}
             </button>
           )}
         </div>
