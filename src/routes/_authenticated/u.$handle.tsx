@@ -218,6 +218,26 @@ function PublicProfile() {
             </div>
           )}
 
+          <div className="mt-4 flex items-center gap-5 border-t border-border/60 pt-3 text-[12px]">
+            <div className="flex items-center gap-1.5">
+              <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+              <span className="font-semibold tabular-nums">{(posts ?? []).length}</span>
+              <span className="text-muted-foreground">posts</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+              <span className="font-semibold tabular-nums">{stats?.followers ?? 0}</span>
+              <span className="text-muted-foreground">seguidores</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Heart className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
+              <span className="font-semibold tabular-nums">{stats?.likes ?? 0}</span>
+              <span className="text-muted-foreground">curtidas</span>
+            </div>
+          </div>
+
+
+
           {!isMe && (
             <div className="mt-5 grid grid-cols-2 gap-2">
               <button
