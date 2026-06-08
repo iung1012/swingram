@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion, AnimatePresence, type PanInfo } from "framer-motion";
-import { X, ChevronLeft, ChevronRight, Pause } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Pause, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SpiralLoader } from "@/components/spiral-loader";
 
