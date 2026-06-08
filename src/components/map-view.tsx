@@ -91,7 +91,7 @@ export default function MapView() {
     console.log("[MapView] init effect", { hasContainer: !!containerEl, hasMap: !!mapRef.current });
     if (!containerEl || mapRef.current) return;
     try {
-      const map = L.map(mapContainer.current, {
+      const map = L.map(containerEl, {
         center,
         zoom: 11,
         zoomControl: false,
