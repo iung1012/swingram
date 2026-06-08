@@ -240,6 +240,11 @@ function CreatePost() {
     setSubmitting(true);
     setProgress(0);
     try {
+      const { checkRateLimit } = await import("@/lib/rate-limit");
+      if (!(await checkRateLimit("create_post"))) {
+        setSubmitting(false);
+        return;
+      }
       const { data: post, error } = await supabase
         .from("posts")
         .insert({
