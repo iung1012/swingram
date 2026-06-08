@@ -236,7 +236,7 @@ export default function MapView() {
       ) : (
         <>
           <div className="relative overflow-hidden rounded-3xl border border-border shadow-2xl">
-            <div ref={mapContainer} style={{ height: 480, width: "100%" }} className="bg-[#0a0a0a]" />
+            <div ref={setContainerEl} style={{ height: 480, width: "100%" }} className="bg-[#0a0a0a]" />
 
             <div
               className="pointer-events-none absolute inset-0 z-[400]"
