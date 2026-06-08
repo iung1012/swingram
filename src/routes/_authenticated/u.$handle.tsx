@@ -341,11 +341,6 @@ function PublicProfile() {
 
           <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/60 pt-3 text-[12px]">
             <div className="flex items-center gap-1.5">
-              <Grid3x3 className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
-              <span className="font-semibold tabular-nums">{formatCompact((postCards ?? []).length)}</span>
-              <span className="text-muted-foreground">posts</span>
-            </div>
-            <div className="flex items-center gap-1.5">
               <Users className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={2} />
               <span className="font-semibold tabular-nums">{formatCompact(stats?.followers ?? 0)}</span>
               <span className="text-muted-foreground">seguidores</span>
