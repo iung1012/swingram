@@ -577,13 +577,11 @@ function CreatePost() {
           onClick={submit}
           disabled={submitting}
           title="Publicar"
-          className="fixed right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full text-primary-foreground shadow-lg transition hover:scale-105 active:scale-95 disabled:opacity-70"
-          style={{
-            bottom: "calc(80px + env(safe-area-inset-bottom))",
-            background: "var(--gradient-brasa-h)",
-          }}
+          className="fixed right-4 top-4 z-[60] flex h-12 items-center gap-2 rounded-full px-5 text-[14px] font-medium text-primary-foreground shadow-lg transition hover:scale-105 active:scale-95 disabled:opacity-70"
+          style={{ background: "var(--gradient-brasa-h)" }}
         >
-          <Send className="h-5 w-5" strokeWidth={2.2} />
+          <Send className="h-4 w-4" strokeWidth={2.2} />
+          <span>Publicar</span>
         </button>
       )}
     </div>
