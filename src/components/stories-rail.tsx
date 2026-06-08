@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
 import { toast } from "sonner";
 import { StoryViewer, StoryRingButton, type Story } from "@/components/story-viewer";
+import { SignedImage } from "@/components/signed-image";
 
 type Row = {
   id: string;
