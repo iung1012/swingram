@@ -172,7 +172,7 @@ export default function MapView() {
       markersRef.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [me?.lat_snap, me?.lng_snap]);
 
   // self marker + recenter when profile loads
   useEffect(() => {
