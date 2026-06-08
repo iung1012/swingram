@@ -34,7 +34,7 @@ function BannersAdmin() {
 
   async function add() {
     if (!file || !user) return;
-    const path = await uploadToBucket("verification" /* using private bucket fallback */, user.id, file, "banner");
+    const path = await uploadToBucket("banners", user.id, file, "banner");
     // banners bucket is private; show via signed url
     await supabase.from("banners").insert({ image_url: path, link: link || null, position, active: true, order: (data?.length ?? 0) });
     toast.success("Banner adicionado");
