@@ -53,11 +53,62 @@ export function PostCard({
   const [saved, setSaved] = useState(post.saved_by_me);
   const [revealed, setRevealed] = useState(!post.nsfw || !defaultBlur);
   const [active, setActive] = useState(0);
+  const [showComments, setShowComments] = useState(false);
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
   const hasMedia = (post.media ?? []).length > 0;
   const current = post.media[active];
 
   useEffect(() => setRevealed(!post.nsfw || !defaultBlur), [post.nsfw, defaultBlur]);
   useEffect(() => { setLiked(post.liked_by_me); setLikes(post.likes_count); }, [post.liked_by_me, post.likes_count]);
+
+  const { data: comments } = useQuery({
+    queryKey: ["post-comments", post.id],
+    enabled: showComments,
+    queryFn: async () => {
+      const { data: cs } = await supabase
+        .from("comments")
+        .select("id, user_id, body, created_at")
+        .eq("post_id", post.id)
+        .eq("status", "visible")
+        .order("created_at", { ascending: true })
+        .limit(200);
+      const ids = Array.from(new Set((cs ?? []).map((c) => c.user_id)));
+      let profilesMap = new Map<string, any>();
+      if (ids.length) {
+        const { data: ps } = await supabase
+          .from("profiles")
+          .select("user_id, handle, display_name, avatar_url")
+          .in("user_id", ids);
+        profilesMap = new Map((ps ?? []).map((p: any) => [p.user_id, p]));
+      }
+      return (cs ?? []).map((c: any) => ({ ...c, profile: profilesMap.get(c.user_id) }));
+    },
+  });
+
+  async function submitComment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!currentUserId) {
+      toast.error("Faça login para comentar");
+      return;
+    }
+    const text = body.trim();
+    if (!text) return;
+    setSending(true);
+    const { error } = await supabase.from("comments").insert({
+      post_id: post.id,
+      user_id: currentUserId,
+      body: text,
+    });
+    setSending(false);
+    if (error) {
+      toast.error("Falha ao comentar");
+      return;
+    }
+    setBody("");
+    qc.invalidateQueries({ queryKey: ["post-comments", post.id] });
+    qc.invalidateQueries({ queryKey: ["feed"] });
+  }
 
   async function toggleLike() {
     if (!currentUserId) return;
