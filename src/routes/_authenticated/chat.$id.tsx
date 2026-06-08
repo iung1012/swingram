@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SignedImage } from "@/components/signed-image";
+import { VerifiedAvatar } from "@/components/verified-avatar";
 import { ReportDialog } from "@/components/report-dialog";
 import { detectScamSignals, accountIsTrusted } from "@/lib/anti-scam";
 import { toast } from "sonner";
