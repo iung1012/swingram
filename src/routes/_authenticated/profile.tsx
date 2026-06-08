@@ -465,11 +465,18 @@ function MyProfile() {
                 const first = p.media[0];
                 const kind = (first?.kind ?? "image") as "image" | "video";
                 return (
-                  <Link
+                  <button
+                    type="button"
                     key={p.id}
-                    to={"/post/$id" as never}
-                    params={{ id: p.id } as never}
-                    className="group relative overflow-hidden rounded-lg border border-border bg-card"
+                    onClick={() =>
+                      setZoomPost({
+                        id: p.id,
+                        url: first?.url ?? null,
+                        kind: kind as "image" | "video" | "text",
+                        caption: p.caption ?? "",
+                      })
+                    }
+                    className="group relative overflow-hidden rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary"
                   >
                     <SignedMedia
                       bucket="posts"
