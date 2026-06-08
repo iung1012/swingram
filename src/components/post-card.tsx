@@ -181,6 +181,7 @@ export function PostCard({
     if (error) toast.error("Falha ao apagar");
     else {
       toast.success("Comentário apagado");
+      setCommentsCount((c) => Math.max(0, c - 1));
       qc.invalidateQueries({ queryKey: ["post-comments", post.id] });
       qc.invalidateQueries({ queryKey: ["feed"] });
     }
@@ -216,6 +217,7 @@ export function PostCard({
       return;
     }
     setBody("");
+    setCommentsCount((c) => c + 1);
     qc.invalidateQueries({ queryKey: ["post-comments", post.id] });
     qc.invalidateQueries({ queryKey: ["feed"] });
   }
