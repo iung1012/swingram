@@ -41,6 +41,8 @@ export interface StoryViewerProps {
   initialIndex?: number;
   onClose: () => void;
   onStoryView?: (id: string) => void;
+  onDeleteStory?: (id: string) => void | Promise<void>;
+  canDelete?: boolean;
 }
 
 export function StoryViewer({
@@ -51,6 +53,8 @@ export function StoryViewer({
   initialIndex = 0,
   onClose,
   onStoryView,
+  onDeleteStory,
+  canDelete = false,
 }: StoryViewerProps) {
   const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
   const [progress, setProgress] = React.useState(0);
