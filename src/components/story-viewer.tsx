@@ -208,6 +208,19 @@ export function StoryViewer({
             <p className="truncate text-sm font-semibold text-white drop-shadow">{username}</p>
             {timestamp && <p className="text-[11px] text-white/70">{fmtTime(timestamp)}</p>}
           </div>
+          {canDelete && onDeleteStory && (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!confirm("Excluir este story?")) return;
+                await onDeleteStory(story.id);
+              }}
+              aria-label="Excluir story"
+              className="rounded-full p-1.5 text-white/90 hover:bg-white/15"
+            >
+              <Trash2 className="h-4.5 w-4.5" />
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
