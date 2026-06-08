@@ -412,7 +412,7 @@ export function PostCard({
           {renderCaption(post.caption)}
         </p>
       )}
-      {showComments && (
+      {!commentsAsDialog && showComments && (
         <div className="border-t border-border">
           <div className="max-h-72 space-y-3 overflow-y-auto px-3 py-3">
             {(comments ?? []).length === 0 ? (
