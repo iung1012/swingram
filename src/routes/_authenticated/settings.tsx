@@ -115,7 +115,15 @@ function Settings() {
       <Group title="Conta">
         <ActionRow icon={LogOut} iconBg="from-zinc-500 to-zinc-700" label="Sair" onClick={logout} />
         <Divider />
-        <ActionRow icon={Trash2} iconBg="from-red-500 to-red-700" label="Deletar minha conta" onClick={deleteAccount} danger />
+      </Group>
+
+      <Group title="Zona de perigo">
+        <div className="flex flex-col items-start gap-2 px-3.5 py-3.5">
+          <p className="text-sm font-medium">Deletar minha conta</p>
+          <p className="text-xs text-muted-foreground">
+            Sua conta e dados serão removidos. Toque para iniciar a contagem de 10s — toque novamente para cancelar.
+          </p>
+          <DeleteAccountButton onConfirm={deleteAccount} />
       </Group>
 
       <p className="mt-8 text-center text-[11px] text-muted-foreground">Brasa Swing · v1.0</p>
