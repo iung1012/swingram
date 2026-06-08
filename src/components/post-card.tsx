@@ -279,6 +279,56 @@ export function PostCard({
           {renderCaption(post.caption)}
         </p>
       )}
+      {showComments && (
+        <div className="border-t border-border">
+          <div className="max-h-72 space-y-3 overflow-y-auto px-3 py-3">
+            {(comments ?? []).length === 0 ? (
+              <p className="text-center text-[12px] text-muted-foreground">
+                {comments ? "Seja o primeiro a comentar." : "Carregando…"}
+              </p>
+            ) : (
+              (comments ?? []).map((c: any) => (
+                <div key={c.id} className="flex gap-2.5">
+                  <VerifiedAvatar
+                    bucket="avatars"
+                    path={c.profile?.avatar_url}
+                    alt={c.profile?.display_name ?? ""}
+                    verified={false}
+                    className="h-7 w-7 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px]">
+                      <span className="font-semibold">@{c.profile?.handle ?? "user"}</span>{" "}
+                      <span className="text-foreground/90">{c.body}</span>
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <form
+            onSubmit={submitComment}
+            className="flex items-center gap-2 border-t border-border bg-card/95 px-3 py-2"
+          >
+            <input
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder={currentUserId ? "Adicione um comentário…" : "Faça login para comentar"}
+              disabled={!currentUserId || sending}
+              maxLength={500}
+              className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-primary"
+            />
+            <button
+              type="submit"
+              disabled={!currentUserId || sending || !body.trim()}
+              className="rounded-md px-3 py-2 text-[13px] font-medium text-primary-foreground disabled:opacity-50"
+              style={{ background: "var(--gradient-brasa-h)" }}
+            >
+              Enviar
+            </button>
+          </form>
+        </div>
+      )}
     </article>
   );
 }
