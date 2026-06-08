@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck } from "lucide-react";
+import { MoreHorizontal, MessageCircle, Bookmark, BookmarkCheck, Heart, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FireLike } from "./fire-like";
 import { SignedMedia } from "./signed-media";
@@ -63,7 +63,7 @@ export function PostCard({
   useEffect(() => { setLiked(post.liked_by_me); setLikes(post.likes_count); }, [post.liked_by_me, post.likes_count]);
 
   const { data: comments } = useQuery({
-    queryKey: ["post-comments", post.id],
+    queryKey: ["post-comments", post.id, currentUserId],
     enabled: showComments,
     queryFn: async () => {
       const { data: cs } = await supabase
@@ -73,7 +73,9 @@ export function PostCard({
         .eq("status", "visible")
         .order("created_at", { ascending: true })
         .limit(200);
-      const ids = Array.from(new Set((cs ?? []).map((c) => c.user_id)));
+      const list = cs ?? [];
+      const commentIds = list.map((c) => c.id);
+      const ids = Array.from(new Set(list.map((c) => c.user_id)));
       let profilesMap = new Map<string, any>();
       if (ids.length) {
         const { data: ps } = await supabase
@@ -82,9 +84,49 @@ export function PostCard({
           .in("user_id", ids);
         profilesMap = new Map((ps ?? []).map((p: any) => [p.user_id, p]));
       }
-      return (cs ?? []).map((c: any) => ({ ...c, profile: profilesMap.get(c.user_id) }));
+      let likesByComment = new Map<string, { count: number; mine: boolean; byAuthor: boolean }>();
+      if (commentIds.length) {
+        const { data: cls } = await supabase
+          .from("comment_likes")
+          .select("comment_id, user_id")
+          .in("comment_id", commentIds);
+        (cls ?? []).forEach((cl: any) => {
+          const prev = likesByComment.get(cl.comment_id) ?? { count: 0, mine: false, byAuthor: false };
+          prev.count += 1;
+          if (cl.user_id === currentUserId) prev.mine = true;
+          if (cl.user_id === post.user_id) prev.byAuthor = true;
+          likesByComment.set(cl.comment_id, prev);
+        });
+      }
+      return list.map((c: any) => ({
+        ...c,
+        profile: profilesMap.get(c.user_id),
+        likes: likesByComment.get(c.id)?.count ?? 0,
+        liked_by_me: likesByComment.get(c.id)?.mine ?? false,
+        liked_by_author: likesByComment.get(c.id)?.byAuthor ?? false,
+      }));
     },
   });
+
+  async function deleteComment(commentId: string) {
+    const { error } = await supabase.from("comments").delete().eq("id", commentId);
+    if (error) toast.error("Falha ao apagar");
+    else {
+      toast.success("Comentário apagado");
+      qc.invalidateQueries({ queryKey: ["post-comments", post.id] });
+      qc.invalidateQueries({ queryKey: ["feed"] });
+    }
+  }
+
+  async function toggleCommentLike(commentId: string, liked: boolean) {
+    if (!currentUserId) return;
+    if (liked) {
+      await supabase.from("comment_likes").delete().eq("comment_id", commentId).eq("user_id", currentUserId);
+    } else {
+      await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: currentUserId });
+    }
+    qc.invalidateQueries({ queryKey: ["post-comments", post.id] });
+  }
 
   async function submitComment(e: React.FormEvent) {
     e.preventDefault();
@@ -287,23 +329,77 @@ export function PostCard({
                 {comments ? "Seja o primeiro a comentar." : "Carregando…"}
               </p>
             ) : (
-              (comments ?? []).map((c: any) => (
-                <div key={c.id} className="flex gap-2.5">
-                  <VerifiedAvatar
-                    bucket="avatars"
-                    path={c.profile?.avatar_url}
-                    alt={c.profile?.display_name ?? ""}
-                    verified={false}
-                    className="h-7 w-7 shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px]">
-                      <span className="font-semibold">@{c.profile?.handle ?? "user"}</span>{" "}
-                      <span className="text-foreground/90">{c.body}</span>
-                    </p>
+              (comments ?? []).map((c: any) => {
+                const isOwn = c.user_id === currentUserId;
+                const canDelete = isOwn || post.user_id === currentUserId;
+                return (
+                  <div key={c.id} className="flex gap-2.5">
+                    <VerifiedAvatar
+                      bucket="avatars"
+                      path={c.profile?.avatar_url}
+                      alt={c.profile?.display_name ?? ""}
+                      verified={false}
+                      className="h-7 w-7 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px]">
+                        <span className="font-semibold">@{c.profile?.handle ?? "user"}</span>{" "}
+                        <span className="text-foreground/90">{c.body}</span>
+                      </p>
+                      <div className="mt-0.5 flex items-center gap-3 text-[11px] text-muted-foreground">
+                        <button
+                          type="button"
+                          onClick={() => toggleCommentLike(c.id, c.liked_by_me)}
+                          disabled={!currentUserId}
+                          className="inline-flex items-center gap-1 hover:text-foreground disabled:opacity-50"
+                          aria-label={c.liked_by_me ? "Descurtir" : "Curtir"}
+                        >
+                          <Heart
+                            className={`h-3 w-3 ${c.liked_by_me ? "fill-primary text-primary" : ""}`}
+                            strokeWidth={2.2}
+                          />
+                          {c.likes > 0 && c.likes}
+                        </button>
+                        {c.liked_by_author && c.user_id !== post.user_id && (
+                          <span className="text-primary">Curtido pelo autor</span>
+                        )}
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Mais"
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                        >
+                          <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={2.2} />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {canDelete && (
+                          <DropdownMenuItem
+                            onSelect={() => deleteComment(c.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Apagar comentário
+                          </DropdownMenuItem>
+                        )}
+                        {!isOwn && (
+                          <ReportDialog
+                            targetType="comment"
+                            targetId={c.id}
+                            trigger={
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                Denunciar como spam
+                              </DropdownMenuItem>
+                            }
+                          />
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
           <form
