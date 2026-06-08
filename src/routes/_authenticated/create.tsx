@@ -64,6 +64,70 @@ function CreatePost() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const dragIndex = useRef<number | null>(null);
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
+  const draftLoadedRef = useRef(false);
+  const draftKey = user ? `${DRAFT_KEY_PREFIX}${user.id}` : null;
+
+  // Load draft on mount (per user)
+  useEffect(() => {
+    if (!draftKey || draftLoadedRef.current) return;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        const d = JSON.parse(raw) as Draft;
+        if (d && typeof d.caption === "string") {
+          setCaption(d.caption);
+          if (typeof d.nsfw === "boolean") setNsfw(d.nsfw);
+          setDraftSavedAt(d.savedAt ?? null);
+          if (d.caption.trim()) {
+            toast.message("Rascunho restaurado", {
+              description: "Continuamos de onde você parou.",
+            });
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+    draftLoadedRef.current = true;
+  }, [draftKey]);
+
+  // Auto-save draft (debounced)
+  useEffect(() => {
+    if (!draftKey || !draftLoadedRef.current) return;
+    const handle = setTimeout(() => {
+      try {
+        if (!caption.trim()) {
+          localStorage.removeItem(draftKey);
+          setDraftSavedAt(null);
+          return;
+        }
+        const now = Date.now();
+        const draft: Draft = { caption, nsfw, savedAt: now };
+        localStorage.setItem(draftKey, JSON.stringify(draft));
+        setDraftSavedAt(now);
+      } catch {
+        // ignore (quota, private mode, etc.)
+      }
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [caption, nsfw, draftKey]);
+
+  function clearDraft() {
+    if (!draftKey) return;
+    try {
+      localStorage.removeItem(draftKey);
+    } catch {
+      // ignore
+    }
+    setDraftSavedAt(null);
+  }
+
+  function discardDraft() {
+    setCaption("");
+    clearDraft();
+    toast.success("Rascunho descartado");
+  }
 
   const tags = useMemo(() => extractHashtags(caption), [caption]);
   const hasMedia = files.length > 0;
