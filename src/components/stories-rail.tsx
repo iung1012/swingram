@@ -229,12 +229,15 @@ export function StoriesRail() {
 
       {activeGroup && (
         <StoryViewer
+          key={activeGroup.user_id}
           stories={activeGroup.resolved}
           username={activeGroup.user_id === user?.id ? "Você" : activeGroup.display_name}
           avatar={activeGroup.avatar_url}
           timestamp={activeGroup.rows[0]?.created_at}
           onClose={() => setOpenGroupIdx(null)}
           onStoryView={markViewed}
+          canDelete={activeGroup.user_id === user?.id}
+          onDeleteStory={deleteStory}
         />
       )}
     </div>
