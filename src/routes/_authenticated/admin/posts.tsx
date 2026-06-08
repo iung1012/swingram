@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -6,8 +6,17 @@ import { Button } from "@/components/ui/button";
 import { SignedImage } from "@/components/signed-image";
 import { toast } from "sonner";
 
+async function requireAdmin() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw redirect({ to: "/auth" });
+  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+  const list = (roles ?? []).map((r) => r.role);
+  if (!list.includes("admin")) throw redirect({ to: "/home" });
+}
+
 export const Route = createFileRoute("/_authenticated/admin/posts")({
   ssr: false,
+  beforeLoad: requireAdmin,
   component: PostsAdmin,
 });
 
@@ -31,7 +40,7 @@ function PostsAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from("posts").update({ moderation_status: status }).eq("id", post.id);
     if (status === "rejected") {
-      await supabase.from("posts").update({ deleted_at: new Date().toISOString() }).eq("id", post.id);
+      await supabase.from("posts").update({ deleted_at: new Date().toISOString(), moderation_status: "rejected" }).eq("id", post.id);
     }
     await supabase.from("audit_logs").insert({ admin_id: user!.id, action: `post_${status}`, target_type: "post", target_id: post.id });
     toast.success(`Post ${status === "approved" ? "aprovado" : "rejeitado"}`);
