@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SignedImage } from "@/components/signed-image";
@@ -7,7 +7,7 @@ import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { ReportDialog } from "@/components/report-dialog";
 import { toast } from "sonner";
-import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag } from "lucide-react";
+import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/u/$handle")({
   ssr: false,
@@ -19,6 +19,7 @@ function PublicProfile() {
   const { handle } = Route.useParams();
   const { user } = useAuth();
   const nav = useNavigate();
+  const qc = useQueryClient();
 
   const { data: profile } = useQuery({
     queryKey: ["profile-handle", handle],
@@ -42,6 +43,58 @@ function PublicProfile() {
       return data ?? [];
     },
   });
+
+  const { data: followState } = useQuery({
+    queryKey: ["follow", user?.id, profile?.user_id],
+    enabled: !!user && !!profile && user.id !== profile.user_id,
+    queryFn: async () => {
+      const [mine, counts] = await Promise.all([
+        supabase
+          .from("follows")
+          .select("follower_id")
+          .eq("follower_id", user!.id)
+          .eq("followee_id", profile!.user_id)
+          .maybeSingle(),
+        supabase
+          .from("follows")
+          .select("follower_id", { count: "exact", head: true })
+          .eq("followee_id", profile!.user_id),
+      ]);
+      return { following: !!mine.data, followers: counts.count ?? 0 };
+    },
+  });
+
+  async function toggleFollow() {
+    if (!user || !profile) return;
+    if (followState?.following) {
+      await supabase
+        .from("follows")
+        .delete()
+        .eq("follower_id", user.id)
+        .eq("followee_id", profile.user_id);
+      toast.success("Você deixou de seguir");
+    } else {
+      const { error } = await supabase
+        .from("follows")
+        .insert({ follower_id: user.id, followee_id: profile.user_id });
+      if (error) return toast.error("Falha ao seguir");
+      toast.success("Seguindo");
+    }
+    qc.invalidateQueries({ queryKey: ["follow", user.id, profile.user_id] });
+  }
+
+  async function shareProfile() {
+    if (!profile) return;
+    const url = `${window.location.origin}/u/${profile.handle}`;
+    const data = { title: profile.display_name, text: `Veja @${profile.handle} no Brasa Swing`, url };
+    try {
+      if (navigator.share) await navigator.share(data);
+      else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copiado");
+      }
+    } catch {}
+  }
 
   async function sendInterest() {
     if (!user || !profile) return;
@@ -156,6 +209,34 @@ function PublicProfile() {
               >
                 <MessageCircle className="h-4 w-4" strokeWidth={2.2} />
                 Mensagem
+              </button>
+              <button
+                onClick={toggleFollow}
+                className={
+                  "flex h-10 items-center justify-center gap-1.5 rounded-lg border text-[13px] font-medium transition " +
+                  (followState?.following
+                    ? "border-border bg-card text-foreground hover:bg-secondary/60"
+                    : "border-foreground/30 bg-secondary text-foreground hover:bg-secondary/80")
+                }
+              >
+                {followState?.following ? (
+                  <>
+                    <UserCheck className="h-3.5 w-3.5" strokeWidth={2.2} />
+                    Seguindo
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-3.5 w-3.5" strokeWidth={2.2} />
+                    Seguir
+                  </>
+                )}
+              </button>
+              <button
+                onClick={shareProfile}
+                className="flex h-10 items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-[13px] font-medium text-muted-foreground hover:text-foreground"
+              >
+                <Share2 className="h-3.5 w-3.5" strokeWidth={2} />
+                Compartilhar
               </button>
               <ReportDialog
                 targetType="user"
