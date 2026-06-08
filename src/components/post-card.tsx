@@ -526,7 +526,21 @@ export function PostCard({
         </div>
       )}
 
+      {!hasMedia && caption && (
+        <p className="whitespace-pre-wrap px-3 pt-1 pb-2 text-[13px] leading-relaxed text-foreground/90">
+          <Link
+            to={"/u/$handle" as never}
+            params={{ handle: post.author.handle } as never}
+            className="mr-1.5 font-semibold tracking-tight"
+          >
+            @{post.author.handle}
+          </Link>
+          {renderCaption(caption)}
+        </p>
+      )}
+
       <div className="flex items-center justify-between px-3 py-2.5">
+
         <div className="flex items-center gap-4">
           <Dialog open={likesOpen} onOpenChange={setLikesOpen}>
             <DialogTrigger asChild>
@@ -618,7 +632,7 @@ export function PostCard({
           )}
         </button>
       </div>
-      {caption && (
+      {hasMedia && caption && (
         <p className="whitespace-pre-wrap px-3 pb-3 text-[13px] leading-relaxed text-foreground/90">
           <Link
             to={"/u/$handle" as never}
@@ -630,6 +644,7 @@ export function PostCard({
           {renderCaption(caption)}
         </p>
       )}
+
 
       {/* Edit caption dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
