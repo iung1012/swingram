@@ -30,12 +30,22 @@ export function ReportDialog({
   targetType,
   targetId,
   trigger,
+  open: openProp,
+  onOpenChange,
 }: {
   targetType: TargetType;
   targetId: string;
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp ?? internalOpen;
+  const setOpen = (v: boolean) => {
+    if (onOpenChange) onOpenChange(v);
+    else setInternalOpen(v);
+  };
+
   const [reason, setReason] = useState("spam");
   const [details, setDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -69,13 +79,16 @@ export function ReportDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button variant="ghost" size="sm" className="text-muted-foreground">
-            <Flag className="mr-1 h-4 w-4" /> Denunciar
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger !== null && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button variant="ghost" size="sm" className="text-muted-foreground">
+              <Flag className="mr-1 h-4 w-4" /> Denunciar
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
+
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Denunciar</DialogTitle>
