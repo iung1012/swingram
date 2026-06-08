@@ -19,7 +19,11 @@ import {
   Sparkles,
   Camera,
   ImagePlus,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
+
 
 
 export const Route = createFileRoute("/_authenticated/profile")({
@@ -36,6 +40,28 @@ function MyProfile() {
   const avatarInput = useRef<HTMLInputElement | null>(null);
   const bannerInput = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState<"avatar" | "banner" | null>(null);
+  const [editingBio, setEditingBio] = useState(false);
+  const [bioDraft, setBioDraft] = useState("");
+  const [savingBio, setSavingBio] = useState(false);
+
+  async function saveBio() {
+    if (!user) return;
+    setSavingBio(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ bio: bioDraft.trim() } as never)
+      .eq("user_id", user.id);
+    setSavingBio(false);
+    if (error) {
+      toast.error("Falha ao salvar descrição");
+      return;
+    }
+    toast.success("Descrição atualizada");
+    setEditingBio(false);
+    qc.invalidateQueries({ queryKey: ["profile", user.id] });
+    qc.invalidateQueries({ queryKey: ["my-profile", user.id] });
+  }
+
 
   const { data: posts } = useQuery({
     queryKey: ["my-posts", user?.id],
@@ -194,9 +220,70 @@ function MyProfile() {
             </div>
           </div>
 
-          {profile.bio && (
-            <p className="mt-4 text-[14px] leading-relaxed text-foreground/90">{profile.bio}</p>
+          {editingBio ? (
+            <div className="mt-4 space-y-2">
+              <textarea
+                value={bioDraft}
+                onChange={(e) => setBioDraft(e.target.value)}
+                maxLength={500}
+                rows={4}
+                placeholder="Conte um pouco sobre você..."
+                className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-[14px] leading-relaxed text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-muted-foreground">{bioDraft.length}/500</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingBio(false)}
+                    className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-secondary/60 px-3 text-[12px] font-medium hover:bg-secondary"
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2.2} />
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveBio}
+                    disabled={savingBio}
+                    className="inline-flex h-8 items-center gap-1 rounded-md bg-primary px-3 text-[12px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  >
+                    <Check className="h-3.5 w-3.5" strokeWidth={2.2} />
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : profile.bio ? (
+            <div className="group mt-4 flex items-start gap-2">
+              <p className="flex-1 whitespace-pre-wrap text-[14px] leading-relaxed text-foreground/90">
+                {profile.bio}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setBioDraft(profile.bio ?? "");
+                  setEditingBio(true);
+                }}
+                aria-label="Editar descrição"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+              >
+                <Pencil className="h-3.5 w-3.5" strokeWidth={2.2} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setBioDraft("");
+                setEditingBio(true);
+              }}
+              className="mt-4 inline-flex h-9 items-center gap-1.5 rounded-lg border border-dashed border-border bg-card/40 px-3 text-[13px] font-medium text-muted-foreground hover:text-foreground"
+            >
+              <Pencil className="h-3.5 w-3.5" strokeWidth={2.2} />
+              Adicionar descrição
+            </button>
           )}
+
 
           {(profile.interests ?? []).length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
