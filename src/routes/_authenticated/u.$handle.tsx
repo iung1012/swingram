@@ -501,8 +501,8 @@ function ZoomPostContent({
       )}
       <div className="flex max-h-[85vh] flex-col">
         {caption && (
-          <div className="border-b border-border px-4 py-3 text-[14px] leading-relaxed text-foreground/90">
-            {caption}
+          <div className="whitespace-pre-wrap border-b border-border px-4 py-3 text-[14px] leading-relaxed text-foreground/90">
+            {renderCaption(caption)}
           </div>
         )}
         <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
