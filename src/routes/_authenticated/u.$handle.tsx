@@ -10,7 +10,7 @@ import { renderCaption } from "@/lib/hashtags";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { ReportDialog } from "@/components/report-dialog";
-import { FireLike } from "@/components/fire-like";
+import { ZoomPostContent } from "@/components/zoom-post-content";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -23,6 +23,8 @@ import { toast } from "sonner";
 import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2, Heart, Users, MoreVertical, Eye, BadgeCheck } from "lucide-react";
 import { useMyProfile } from "@/hooks/use-profile";
 import { distanceKm } from "@/lib/geo";
+
+
 
 
 function formatCompact(n: number): string {
