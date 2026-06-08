@@ -162,7 +162,7 @@ function Feed({ mode, userId, interests, defaultBlur }: { mode: FeedMode; userId
     queryKey: ["feed", mode, userId, interests.join(",")],
     queryFn: () => fetchFeed(userId, mode, interests),
   });
-  if (isLoading) return <p className="py-12 text-center text-sm text-muted-foreground">Carregando...</p>;
+  if (isLoading) return <SpiralLoaderBlock />;
   if (!data || data.length === 0) {
     const msg =
       mode === "following"
