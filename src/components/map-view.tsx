@@ -1,4 +1,4 @@
-import type { Feature as GJFeature, FeatureCollection, Point } from "geojson";
+import type { Feature as GJFeature, Point } from "geojson";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import maplibregl from "maplibre-gl";
