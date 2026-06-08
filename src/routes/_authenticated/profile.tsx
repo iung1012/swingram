@@ -497,7 +497,7 @@ function MyProfile() {
                         {p.moderation_status === "pending" ? "Análise" : "Rejeitado"}
                       </span>
                     )}
-                  </Link>
+                  </button>
                 );
               })}
           </div>
