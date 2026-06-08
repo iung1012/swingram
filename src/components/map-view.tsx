@@ -10,7 +10,27 @@ import { useMyProfile } from "@/hooks/use-profile";
 import { distanceKm } from "@/lib/geo";
 import { Card } from "@/components/ui/card";
 
-const DARK_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const DARK_STYLE: maplibregl.StyleSpecification = {
+  version: 8,
+  sources: {
+    "carto-dark": {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      ],
+      tileSize: 256,
+      attribution: "© OpenStreetMap, © CARTO",
+    },
+  },
+  layers: [
+    { id: "bg", type: "background", paint: { "background-color": "#0a0a0a" } },
+    { id: "carto-dark", type: "raster", source: "carto-dark" },
+  ],
+  glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
+};
 const SRC_ID = "profiles-src";
 const CLUSTER_LAYER = "profiles-clusters";
 const CLUSTER_COUNT_LAYER = "profiles-cluster-count";
