@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { LegalLayout } from "@/components/legal-layout";
 
 export const Route = createFileRoute("/terms")({
@@ -205,5 +205,3 @@ function TermsPage() {
     </LegalLayout>
   );
 }
-
-import { Link } from "@tanstack/react-router";
