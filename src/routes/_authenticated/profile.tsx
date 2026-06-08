@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile, useIsStaff } from "@/hooks/use-profile";
 import { SignedImage } from "@/components/signed-image";
+import { SignedMedia } from "@/components/signed-media";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { toast } from "sonner";
