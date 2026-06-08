@@ -38,7 +38,6 @@ async function fetchFeed(currentUserId: string | null, mode: FeedMode, interests
     .from("posts")
     .select(`
       id, user_id, caption, nsfw, created_at,
-      profiles!inner(handle, display_name, avatar_url, verified, interests, shadow_banned, banned),
       post_media(url, order)
     `)
     .eq("moderation_status", "approved")
@@ -48,8 +47,26 @@ async function fetchFeed(currentUserId: string | null, mode: FeedMode, interests
 
   if (mode === "following") q = q.in("user_id", followingIds);
 
-  const { data } = await q;
-  let rows = (data ?? []).filter((p: any) => !p.profiles.shadow_banned && !p.profiles.banned);
+  const { data, error } = await q;
+  if (error) {
+    console.error("[feed] posts query failed", error);
+    return [];
+  }
+  const postRows = data ?? [];
+  if (postRows.length === 0) return [];
+
+  // Fetch authors separately (no FK between posts.user_id and profiles.user_id)
+  const authorIds = Array.from(new Set(postRows.map((p: any) => p.user_id)));
+  const { data: authorsData } = await supabase
+    .from("profiles")
+    .select("user_id, handle, display_name, avatar_url, verified, interests, shadow_banned, banned")
+    .in("user_id", authorIds);
+  const authors = new Map<string, any>();
+  (authorsData ?? []).forEach((a: any) => authors.set(a.user_id, a));
+
+  let rows = postRows
+    .map((p: any) => ({ ...p, profiles: authors.get(p.user_id) }))
+    .filter((p: any) => p.profiles && !p.profiles.shadow_banned && !p.profiles.banned);
 
   if (mode === "recommended" && interests.length > 0) {
     rows = rows.filter((p: any) => (p.profiles.interests ?? []).some((i: string) => interests.includes(i)));
@@ -78,6 +95,14 @@ async function fetchFeed(currentUserId: string | null, mode: FeedMode, interests
     (savesRes?.data ?? []).forEach((s: any) => savedByMe.add(s.post_id));
   }
 
+  // Batch-sign media URLs to avoid one round-trip per image.
+  const mediaPaths: string[] = [];
+  rows.forEach((r: any) => (r.post_media ?? []).forEach((m: any) => m?.url && mediaPaths.push(m.url)));
+  const signedMedia = new Map<string, string>();
+  if (mediaPaths.length > 0) {
+    const { data: signed } = await supabase.storage.from("posts").createSignedUrls(mediaPaths, 3600);
+    (signed ?? []).forEach((s: any) => { if (s.path && s.signedUrl) signedMedia.set(s.path, s.signedUrl); });
+  }
 
   return rows.map((r: any) => ({
     id: r.id,
@@ -86,7 +111,9 @@ async function fetchFeed(currentUserId: string | null, mode: FeedMode, interests
     nsfw: r.nsfw,
     created_at: r.created_at,
     author: r.profiles,
-    media: (r.post_media ?? []).sort((a: any, b: any) => a.order - b.order),
+    media: (r.post_media ?? [])
+      .sort((a: any, b: any) => a.order - b.order)
+      .map((m: any) => ({ ...m, url: signedMedia.get(m.url) ?? m.url })),
     likes_count: likesMap[r.id] ?? 0,
     liked_by_me: likesByMe.has(r.id),
     saved_by_me: savedByMe.has(r.id),
