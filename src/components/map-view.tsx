@@ -1,3 +1,4 @@
+import type { Feature as GJFeature, FeatureCollection, Point } from "geojson";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import maplibregl from "maplibre-gl";
@@ -28,7 +29,7 @@ type NearbyProfile = {
 
 type SelectedProfile = NearbyProfile & { km: number };
 
-type Feature = GeoJSON.Feature<GeoJSON.Point, NearbyProfile>;
+type Feature = GJFeature<Point, NearbyProfile>;
 
 // region cache: avoid refetching same area repeatedly
 const regionCache = new Map<string, { ts: number; rows: NearbyProfile[] }>();
