@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useMyProfile } from "@/hooks/use-profile";
 import { uploadToBucket } from "@/lib/storage";
 import { extractHashtags } from "@/lib/hashtags";
 import { Textarea } from "@/components/ui/textarea";
