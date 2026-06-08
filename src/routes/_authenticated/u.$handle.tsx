@@ -44,7 +44,59 @@ function PublicProfile() {
     },
   });
 
-  async function sendInterest() {
+  const { data: followState } = useQuery({
+    queryKey: ["follow", user?.id, profile?.user_id],
+    enabled: !!user && !!profile && user.id !== profile.user_id,
+    queryFn: async () => {
+      const [mine, counts] = await Promise.all([
+        supabase
+          .from("follows")
+          .select("follower_id")
+          .eq("follower_id", user!.id)
+          .eq("followee_id", profile!.user_id)
+          .maybeSingle(),
+        supabase
+          .from("follows")
+          .select("follower_id", { count: "exact", head: true })
+          .eq("followee_id", profile!.user_id),
+      ]);
+      return { following: !!mine.data, followers: counts.count ?? 0 };
+    },
+  });
+
+  async function toggleFollow() {
+    if (!user || !profile) return;
+    if (followState?.following) {
+      await supabase
+        .from("follows")
+        .delete()
+        .eq("follower_id", user.id)
+        .eq("followee_id", profile.user_id);
+      toast.success("Você deixou de seguir");
+    } else {
+      const { error } = await supabase
+        .from("follows")
+        .insert({ follower_id: user.id, followee_id: profile.user_id });
+      if (error) return toast.error("Falha ao seguir");
+      toast.success("Seguindo");
+    }
+    qc.invalidateQueries({ queryKey: ["follow", user.id, profile.user_id] });
+  }
+
+  async function shareProfile() {
+    if (!profile) return;
+    const url = `${window.location.origin}/u/${profile.handle}`;
+    const data = { title: profile.display_name, text: `Veja @${profile.handle} no Brasa Swing`, url };
+    try {
+      if (navigator.share) await navigator.share(data);
+      else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copiado");
+      }
+    } catch {}
+  }
+
+
     if (!user || !profile) return;
     const { error } = await supabase
       .from("interests_sent")
