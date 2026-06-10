@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
 import { Card } from "@/components/ui/card";
@@ -29,7 +29,7 @@ function CouplePage() {
     queryKey: ["my-couple", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await api
         .from("couple_links")
         .select("*")
         .or(`user_a_id.eq.${user!.id},user_b_id.eq.${user!.id}`)
@@ -38,7 +38,7 @@ function CouplePage() {
         .maybeSingle();
       if (!data) return null;
       const otherId = data.user_a_id === user!.id ? data.user_b_id : data.user_a_id;
-      const { data: other } = await supabase
+      const { data: other } = await api
         .from("profiles")
         .select("handle, display_name, avatar_url, verified")
         .eq("user_id", otherId)
@@ -54,13 +54,13 @@ function CouplePage() {
     if (target === me.handle) return toast.error("Você não pode se vincular a si mesmo");
     setBusy(true);
     try {
-      const { data: other, error: e1 } = await supabase
+      const { data: other, error: e1 } = await api
         .from("profiles")
         .select("user_id, verified")
         .eq("handle", target)
         .maybeSingle();
       if (e1 || !other) throw new Error("Perfil não encontrado");
-      const { error } = await supabase.from("couple_links").insert({
+      const { error } = await api.from("couple_links").insert({
         user_a_id: user.id,
         user_b_id: other.user_id,
         status: "pending",
@@ -83,18 +83,18 @@ function CouplePage() {
     if (!link || !user || !me) return;
     if (accept) {
       // Block if either side not verified
-      const { data: a } = await supabase.from("profiles").select("verified").eq("user_id", link.user_a_id).maybeSingle();
+      const { data: a } = await api.from("profiles").select("verified").eq("user_id", link.user_a_id).maybeSingle();
       if (!a?.verified || !me.verified) {
         toast.error("Ambos precisam estar verificados antes de ativar o vínculo de casal.");
         return;
       }
-      await supabase
+      await api
         .from("couple_links")
         .update({ status: "active", confirmed_at: new Date().toISOString() })
         .eq("id", link.id);
       toast.success("Vínculo ativado 💞");
     } else {
-      await supabase.from("couple_links").delete().eq("id", link.id);
+      await api.from("couple_links").delete().eq("id", link.id);
       toast("Convite recusado");
     }
     qc.invalidateQueries({ queryKey: ["my-couple"] });
@@ -103,7 +103,7 @@ function CouplePage() {
   async function dissolve() {
     if (!link) return;
     if (!confirm("Dissolver o vínculo de casal?")) return;
-    await supabase.from("couple_links").update({ status: "dissolved" }).eq("id", link.id);
+    await api.from("couple_links").update({ status: "dissolved" }).eq("id", link.id);
     toast("Vínculo dissolvido");
     qc.invalidateQueries({ queryKey: ["my-couple"] });
   }
@@ -150,3 +150,4 @@ function CouplePage() {
     </div>
   );
 }
+

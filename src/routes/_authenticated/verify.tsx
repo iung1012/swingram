@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { uploadToBucket } from "@/lib/storage";
 import { Card } from "@/components/ui/card";
@@ -53,7 +53,7 @@ function Verify() {
     queryKey: ["my-verification", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await api
         .from("verification_requests")
         .select("*")
         .eq("user_id", user!.id)
@@ -103,7 +103,7 @@ function Verify() {
         back ? uploadToBucket("verification", user.id, back, "back") : Promise.resolve(null),
         uploadToBucket("verification", user.id, selfie, "selfie"),
       ]);
-      const { error } = await supabase.from("verification_requests").insert({
+      const { error } = await api.from("verification_requests").insert({
         user_id: user.id,
         doc_front_path: frontPath,
         doc_back_path: backPath,
@@ -419,3 +419,4 @@ function ReviewItem({
     </div>
   );
 }
+

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { requireAdmin } from "@/lib/admin-guard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ function VerificationsAdmin() {
   const { data } = useQuery({
     queryKey: ["adm-verifications"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await api
         .from("verification_requests")
         .select("*, profiles(handle, display_name)")
         .eq("status", "pending")
@@ -43,14 +43,14 @@ function Row({ v, onDone }: { v: any; onDone: () => void }) {
   const [notes, setNotes] = useState("");
 
   async function decide(status: "approved" | "rejected") {
-    const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("verification_requests").update({
+    const { data: { user } } = await api.auth.getUser();
+    await api.from("verification_requests").update({
       status, reviewed_by: user!.id, reviewed_at: new Date().toISOString(), notes,
     }).eq("id", v.id);
     if (status === "approved") {
-      await supabase.from("profiles").update({ verified: true, verified_at: new Date().toISOString() }).eq("user_id", v.user_id);
+      await api.from("profiles").update({ verified: true, verified_at: new Date().toISOString() }).eq("user_id", v.user_id);
     }
-    await supabase.from("audit_logs").insert({ admin_id: user!.id, action: `verify_${status}`, target_type: "verification", target_id: v.id });
+    await api.from("audit_logs").insert({ admin_id: user!.id, action: `verify_${status}`, target_type: "verification", target_id: v.id });
     toast.success(`Verificação ${status === "approved" ? "aprovada" : "rejeitada"}`);
     onDone();
   }
@@ -74,3 +74,4 @@ function Row({ v, onDone }: { v: any; onDone: () => void }) {
     </Card>
   );
 }
+

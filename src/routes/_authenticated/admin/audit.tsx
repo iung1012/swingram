@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { requireAdmin } from "@/lib/admin-guard";
 import { Card } from "@/components/ui/card";
 
@@ -14,7 +14,7 @@ function AuditAdmin() {
   const { data } = useQuery({
     queryKey: ["adm-audit"],
     queryFn: async () => {
-      const { data: logs } = await supabase
+      const { data: logs } = await api
         .from("audit_logs")
         .select("*")
         .order("created_at", { ascending: false })
@@ -22,7 +22,7 @@ function AuditAdmin() {
       const ids = Array.from(new Set((logs ?? []).map((l: any) => l.admin_id).filter(Boolean)));
       let profMap = new Map<string, any>();
       if (ids.length > 0) {
-        const { data: profs } = await supabase.from("profiles").select("user_id, handle").in("user_id", ids);
+        const { data: profs } = await api.from("profiles").select("user_id, handle").in("user_id", ids);
         profMap = new Map((profs ?? []).map((p: any) => [p.user_id, p]));
       }
       return (logs ?? []).map((l: any) => ({ ...l, admin: l.admin_id ? profMap.get(l.admin_id) : null }));
@@ -54,3 +54,4 @@ function AuditAdmin() {
     </div>
   );
 }
+

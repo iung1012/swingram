@@ -3,9 +3,9 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
-import { useMyProfile } from "@/hooks/use-profile";
+import { useIsStaff, useMyProfile } from "@/hooks/use-profile";
 import { toast } from "sonner";
 import {
   StoryViewer,
@@ -15,6 +15,7 @@ import {
   type StoryReplyInfo,
 } from "@/components/story-viewer";
 import { SignedImage } from "@/components/signed-image";
+import { canViewProfile, fetchPrivacyState } from "@/lib/privacy";
 
 type Row = {
   id: string;
@@ -35,7 +36,7 @@ type Group = {
 
 async function signMany(paths: string[]) {
   // Files stored as "userId/filename.ext" in `stories` bucket
-  const { data } = await supabase.storage.from("stories").createSignedUrls(paths, 3600);
+  const { data } = await api.storage.from("stories").createSignedUrls(paths, 3600);
   const map = new Map<string, string>();
   (data ?? []).forEach((d: any) => {
     if (d?.path && d?.signedUrl) map.set(d.path, d.signedUrl);
@@ -46,6 +47,8 @@ async function signMany(paths: string[]) {
 export function StoriesRail() {
   const { user } = useAuth();
   const { data: me } = useMyProfile(user?.id);
+  const { data: roles } = useIsStaff(user?.id);
+  const isStaff = !!roles && (roles.admin || roles.moderator || roles.support);
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -60,10 +63,10 @@ export function StoriesRail() {
   });
 
   const { data: groups } = useQuery({
-    queryKey: ["stories-rail", user?.id],
+    queryKey: ["stories-rail", user?.id, isStaff],
     enabled: !!user?.id,
     queryFn: async () => {
-      const { data: rows } = await supabase
+      const { data: rows } = await api
         .from("stories")
         .select("id, user_id, media_url, created_at, expires_at")
         .gt("expires_at", new Date().toISOString())
@@ -71,15 +74,21 @@ export function StoriesRail() {
       const list = (rows ?? []) as Row[];
       const userIds = Array.from(new Set(list.map((r) => r.user_id)));
       if (userIds.length === 0) return [] as Group[];
-      const { data: profs } = await supabase
+      const { data: profs } = await api
         .from("profiles")
-        .select("user_id, handle, display_name, avatar_url")
+        .select("user_id, handle, display_name, avatar_url, banned, shadow_banned, invisible_mode, profile_visibility")
         .in("user_id", userIds);
       const pmap = new Map<string, any>((profs ?? []).map((p: any) => [p.user_id, p]));
-      const paths = list.map((r) => r.media_url);
+      const privacyState = await fetchPrivacyState(user?.id ?? null, userIds);
+      const visibleRows = list.filter((r) => {
+        const p = pmap.get(r.user_id);
+        if (!p) return false;
+        return r.user_id === user?.id || canViewProfile(p, user?.id ?? null, privacyState, isStaff);
+      });
+      const paths = visibleRows.map((r) => r.media_url);
       const signed = await signMany(paths);
       const byUser = new Map<string, Row[]>();
-      list.forEach((r) => {
+      visibleRows.forEach((r) => {
         const arr = byUser.get(r.user_id) ?? [];
         arr.push(r);
         byUser.set(r.user_id, arr);
@@ -88,6 +97,7 @@ export function StoriesRail() {
       byUser.forEach((rows, uid) => {
         const p = pmap.get(uid);
         if (!p) return;
+        if (!canViewProfile(p, user?.id ?? null, privacyState, isStaff) && uid !== user?.id) return;
         out.push({
           user_id: uid,
           handle: p.handle,
@@ -125,9 +135,9 @@ export function StoriesRail() {
     try {
       const ext = file.name.split(".").pop() ?? "jpg";
       const path = `${user.id}/${Date.now()}.${ext}`;
-      const up = await supabase.storage.from("stories").upload(path, file, { upsert: false });
+      const up = await api.storage.from("stories").upload(path, file, { upsert: false });
       if (up.error) throw up.error;
-      const ins = await supabase.from("stories").insert({ user_id: user.id, media_url: path } as never);
+      const ins = await api.from("stories").insert({ user_id: user.id, media_url: path } as never);
       if (ins.error) throw ins.error;
       toast.success("Story publicado");
       qc.invalidateQueries({ queryKey: ["stories-rail"] });
@@ -155,7 +165,7 @@ export function StoriesRail() {
       });
       // Persiste a visualização (ignora duplicatas via PK story_id+viewer_id)
       if (user) {
-        void supabase
+        void api
           .from("story_views")
           .upsert(
             { story_id: id, viewer_id: user.id },
@@ -174,9 +184,9 @@ export function StoriesRail() {
       const row = grp?.rows.find((r) => r.id === id);
       try {
         if (row?.media_url) {
-          await supabase.storage.from("stories").remove([row.media_url]);
+          await api.storage.from("stories").remove([row.media_url]);
         }
-        const { error } = await supabase.from("stories").delete().eq("id", id);
+        const { error } = await api.from("stories").delete().eq("id", id);
         if (error) throw error;
         toast.success("Story excluído");
         // If this was the last one, close the viewer
@@ -205,7 +215,7 @@ export function StoriesRail() {
     enabled: !!activeGroup && !!user && !isOwnerActive,
     queryFn: async () => {
       const storyIds = activeGroup!.rows.map((r) => r.id);
-      const { data } = await supabase
+      const { data } = await api
         .from("story_reactions")
         .select("story_id, emoji")
         .eq("user_id", user!.id)
@@ -225,12 +235,12 @@ export function StoriesRail() {
     queryFn: async () => {
       const storyIds = activeGroup!.rows.map((r) => r.id);
       const [views, reactions, replies] = await Promise.all([
-        supabase.from("story_views").select("story_id, viewer_id").in("story_id", storyIds),
-        supabase
+        api.from("story_views").select("story_id, viewer_id").in("story_id", storyIds),
+        api
           .from("story_reactions")
           .select("story_id, user_id, emoji")
           .in("story_id", storyIds),
-        supabase
+        api
           .from("story_replies")
           .select("id, story_id, sender_id, body, created_at")
           .in("story_id", storyIds)
@@ -250,7 +260,7 @@ export function StoriesRail() {
         { display_name: string; handle: string; avatar_url: string | null }
       >();
       if (ids.size) {
-        const { data: profs } = await supabase
+        const { data: profs } = await api
           .from("profiles")
           .select("user_id, display_name, handle, avatar_url")
           .in("user_id", [...ids]);
@@ -295,13 +305,13 @@ export function StoriesRail() {
     async (storyId: string, emoji: string) => {
       if (!user) return;
       if (myReactions?.[storyId] === emoji) {
-        await supabase
+        await api
           .from("story_reactions")
           .delete()
           .eq("story_id", storyId)
           .eq("user_id", user.id);
       } else {
-        await supabase
+        await api
           .from("story_reactions")
           .upsert(
             { story_id: storyId, user_id: user.id, emoji },
@@ -316,7 +326,7 @@ export function StoriesRail() {
   const replyToStory = useCallback(
     async (storyId: string, body: string) => {
       if (!user) return;
-      const { error } = await supabase
+      const { error } = await api
         .from("story_replies")
         .insert({ story_id: storyId, sender_id: user.id, body });
       if (error) {
@@ -399,3 +409,4 @@ export function StoriesRail() {
     </div>
   );
 }
+

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 
 type Table = "likes" | "comments" | "comment_likes" | "notifications" | "posts";
 
@@ -15,9 +15,9 @@ export function useRealtimePost(
   const qc = useQueryClient();
   useEffect(() => {
     if (!postId) return;
-    const channels: ReturnType<typeof supabase.channel>[] = [];
+    const channels: ReturnType<typeof api.channel>[] = [];
     const subscribe = (table: Table, filter: string, keys: string[][]) => {
-      const ch = supabase
+      const ch = api
         .channel(`rt-${table}-${postId}-${Math.random().toString(36).slice(2)}`)
         .on(
           "postgres_changes" as never,
@@ -50,7 +50,7 @@ export function useRealtimePost(
       ]);
     }
     return () => {
-      channels.forEach((c) => supabase.removeChannel(c));
+      channels.forEach((c) => api.removeChannel(c));
     };
   }, [postId, qc, opts?.likes, opts?.comments, opts?.commentLikes]);
 }
@@ -63,7 +63,7 @@ export function useRealtimeNotifications(userId: string | null | undefined) {
   const qc = useQueryClient();
   useEffect(() => {
     if (!userId) return;
-    const ch = supabase
+    const ch = api
       .channel(`rt-notifications-${userId}`)
       .on(
         "postgres_changes" as never,
@@ -80,7 +80,8 @@ export function useRealtimeNotifications(userId: string | null | undefined) {
       )
       .subscribe();
     return () => {
-      supabase.removeChannel(ch);
+      api.removeChannel(ch);
     };
   }, [userId, qc]);
 }
+

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { requireAdmin } from "@/lib/admin-guard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ function ReportsAdmin() {
   const { data } = useQuery({
     queryKey: ["adm-reports"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await api
         .from("reports")
         .select("*")
         .eq("status", "open")
@@ -29,20 +29,20 @@ function ReportsAdmin() {
   });
 
   async function resolve(r: any, action: "dismiss" | "shadow" | "ban" | "remove") {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await api.auth.getUser();
     if (action === "shadow" && r.target_type === "user") {
-      await supabase.from("profiles").update({ shadow_banned: true }).eq("user_id", r.target_id);
+      await api.from("profiles").update({ shadow_banned: true }).eq("user_id", r.target_id);
     } else if (action === "ban" && r.target_type === "user") {
-      await supabase.from("profiles").update({ banned: true }).eq("user_id", r.target_id);
+      await api.from("profiles").update({ banned: true }).eq("user_id", r.target_id);
     } else if (action === "remove" && r.target_type === "post") {
-      await supabase.from("posts").update({ deleted_at: new Date().toISOString(), moderation_status: "rejected" }).eq("id", r.target_id);
+      await api.from("posts").update({ deleted_at: new Date().toISOString(), moderation_status: "rejected" }).eq("id", r.target_id);
     } else if (action === "remove" && r.target_type === "message") {
-      await supabase.from("messages").update({ status: "removed" }).eq("id", r.target_id);
+      await api.from("messages").update({ status: "removed" }).eq("id", r.target_id);
     } else if (action === "remove" && r.target_type === "comment") {
-      await supabase.from("comments").update({ status: "removed" }).eq("id", r.target_id);
+      await api.from("comments").update({ status: "removed" }).eq("id", r.target_id);
     }
-    await supabase.from("reports").update({ status: action === "dismiss" ? "dismissed" : "resolved", handled_by: user!.id, handled_at: new Date().toISOString() }).eq("id", r.id);
-    await supabase.from("audit_logs").insert({ admin_id: user!.id, action: `report_${action}`, target_type: r.target_type, target_id: r.target_id });
+    await api.from("reports").update({ status: action === "dismiss" ? "dismissed" : "resolved", handled_by: user!.id, handled_at: new Date().toISOString() }).eq("id", r.id);
+    await api.from("audit_logs").insert({ admin_id: user!.id, action: `report_${action}`, target_type: r.target_type, target_id: r.target_id });
     toast.success("Resolvido");
     qc.invalidateQueries({ queryKey: ["adm-reports"] });
   }
@@ -70,3 +70,4 @@ function ReportsAdmin() {
     </div>
   );
 }
+

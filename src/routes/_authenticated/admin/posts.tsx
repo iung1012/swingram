@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { requireAdmin } from "@/lib/admin-guard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ function PostsAdmin() {
   const { data } = useQuery({
     queryKey: ["adm-posts-pending"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await api
         .from("posts")
         .select("*, post_media(url, order), profiles(handle, display_name)")
         .eq("moderation_status", "pending")
@@ -31,12 +31,12 @@ function PostsAdmin() {
   });
 
   async function decide(post: any, status: "approved" | "rejected") {
-    const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("posts").update({ moderation_status: status }).eq("id", post.id);
+    const { data: { user } } = await api.auth.getUser();
+    await api.from("posts").update({ moderation_status: status }).eq("id", post.id);
     if (status === "rejected") {
-      await supabase.from("posts").update({ deleted_at: new Date().toISOString(), moderation_status: "rejected" }).eq("id", post.id);
+      await api.from("posts").update({ deleted_at: new Date().toISOString(), moderation_status: "rejected" }).eq("id", post.id);
     }
-    await supabase.from("audit_logs").insert({ admin_id: user!.id, action: `post_${status}`, target_type: "post", target_id: post.id });
+    await api.from("audit_logs").insert({ admin_id: user!.id, action: `post_${status}`, target_type: "post", target_id: post.id });
     toast.success(`Post ${status === "approved" ? "aprovado" : "rejeitado"}`);
     qc.invalidateQueries({ queryKey: ["adm-posts-pending"] });
   }
@@ -64,3 +64,4 @@ function PostsAdmin() {
     </div>
   );
 }
+

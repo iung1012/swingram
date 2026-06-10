@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile, useIsStaff } from "@/hooks/use-profile";
 import { SignedImage } from "@/components/signed-image";
@@ -55,7 +55,7 @@ function MyProfile() {
   async function saveBio() {
     if (!user) return;
     setSavingBio(true);
-    const { error } = await supabase
+    const { error } = await api
       .from("profiles")
       .update({ bio: bioDraft.trim() } as never)
       .eq("user_id", user.id);
@@ -77,7 +77,7 @@ function MyProfile() {
     queryKey: ["my-posts", user?.id],
     enabled: !!user && !!profile,
     queryFn: async () => {
-      const { data: rows } = await supabase
+      const { data: rows } = await api
         .from("posts")
         .select(
           `id, user_id, caption, nsfw, created_at, moderation_status, post_media(url, order, kind)`,
@@ -91,9 +91,9 @@ function MyProfile() {
 
       const ids = postRows.map((r: any) => r.id);
       const [{ data: likes }, { data: comments }, savesRes] = await Promise.all([
-        supabase.from("likes").select("post_id, user_id").in("post_id", ids),
-        supabase.from("comments").select("post_id").in("post_id", ids),
-        supabase.from("saves").select("post_id").eq("user_id", user!.id).in("post_id", ids),
+        api.from("likes").select("post_id, user_id").in("post_id", ids),
+        api.from("comments").select("post_id").in("post_id", ids),
+        api.from("saves").select("post_id").eq("user_id", user!.id).in("post_id", ids),
       ]);
 
       const likesMap: Record<string, number> = {};
@@ -153,13 +153,13 @@ function MyProfile() {
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
       const path = `${user.id}/${kind}-${Date.now()}.${ext}`;
-      const up = await supabase.storage.from("avatars").upload(path, file, {
+      const up = await api.storage.from("avatars").upload(path, file, {
         upsert: false,
         contentType: file.type,
       });
       if (up.error) throw up.error;
       const field = kind === "avatar" ? "avatar_url" : "banner_url";
-      const { error } = await supabase
+      const { error } = await api
         .from("profiles")
         .update({ [field]: path } as never)
         .eq("user_id", user.id);
@@ -576,3 +576,4 @@ function Row({
 function Divider() {
   return <div className="mx-4 h-px bg-border" />;
 }
+

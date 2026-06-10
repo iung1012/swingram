@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
 import { uploadToBucket } from "@/lib/storage";
@@ -241,6 +241,8 @@ function CreatePost() {
     }
     setSubmitting(true);
     setProgress(0);
+    let createdPostId: string | null = null;
+    const uploadedPaths: string[] = [];
     try {
       const { checkRateLimit } = await import("@/lib/rate-limit");
       if (!(await checkRateLimit("create_post"))) {
@@ -248,7 +250,7 @@ function CreatePost() {
         return;
       }
       const isVerified = profile?.verified ?? false;
-      const { data: post, error } = await supabase
+      const { data: post, error } = await api
         .from("posts")
         .insert({
           user_id: user.id,
@@ -259,6 +261,7 @@ function CreatePost() {
         .select()
         .single();
       if (error) throw error;
+      createdPostId = post.id;
 
       if (hasMedia) {
         const uploads: Array<{
@@ -270,18 +273,21 @@ function CreatePost() {
         for (let i = 0; i < files.length; i++) {
           const p = files[i];
           const path = await uploadToBucket("posts", user.id, p.file, post.id);
+          uploadedPaths.push(path);
           uploads.push({ post_id: post.id, url: path, order: i, kind: p.kind });
           setProgress(Math.round(((i + 1) / files.length) * 100));
         }
-        await supabase.from("post_media").insert(uploads);
+        const { error: mediaError } = await api.from("post_media").insert(uploads);
+        if (mediaError) throw mediaError;
 
-        await supabase.from("age_consent_records").insert({
+        const { error: consentError } = await api.from("age_consent_records").insert({
           post_id: post.id,
           user_id: user.id,
           attestation_text:
             "Declaro ter 18+ e ter consentimento de todas as pessoas retratadas.",
           user_agent: navigator.userAgent,
         });
+        if (consentError) throw consentError;
       }
 
       toast.success(
@@ -292,6 +298,14 @@ function CreatePost() {
       qc.invalidateQueries({ queryKey: ["profile-posts"] });
       nav({ to: "/profile" });
     } catch (e: any) {
+      if (createdPostId) {
+        await Promise.allSettled([
+          uploadedPaths.length
+            ? api.storage.from("posts").remove(uploadedPaths)
+            : Promise.resolve(),
+          api.from("posts").delete().eq("id", createdPostId),
+        ]);
+      }
       toast.error(e.message ?? "Erro ao postar");
     } finally {
       setSubmitting(false);
@@ -696,3 +710,4 @@ function renderCaption(text: string): {
   });
   return { hasHighlight: highlight, nodes };
 }
+

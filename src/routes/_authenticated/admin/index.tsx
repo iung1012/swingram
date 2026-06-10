@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import {
   Users,
   FileImage,
@@ -21,10 +21,10 @@ function Dashboard() {
     queryKey: ["admin-stats"],
     queryFn: async () => {
       const [users, postsPending, reportsOpen, verifPending] = await Promise.all([
-        supabase.from("profiles").select("*", { count: "exact", head: true }),
-        supabase.from("posts").select("*", { count: "exact", head: true }).eq("moderation_status", "pending"),
-        supabase.from("reports").select("*", { count: "exact", head: true }).eq("status", "open"),
-        supabase.from("verification_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        api.from("profiles").select("*", { count: "exact", head: true }),
+        api.from("posts").select("*", { count: "exact", head: true }).eq("moderation_status", "pending"),
+        api.from("reports").select("*", { count: "exact", head: true }).eq("status", "open"),
+        api.from("verification_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
       ]);
       return {
         users: users.count ?? 0,
@@ -144,3 +144,4 @@ function QuickRow({ to, label }: { to: string; label: string }) {
     </Link>
   );
 }
+

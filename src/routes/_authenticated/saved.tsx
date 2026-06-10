@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Bookmark, ChevronLeft } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SignedMedia } from "@/components/signed-media";
 import { SpiralLoaderBlock } from "@/components/spiral-loader";
@@ -18,7 +18,7 @@ function SavedPosts() {
     queryKey: ["saved-posts", user?.id ?? null],
     enabled: !!user,
     queryFn: async () => {
-      const { data: rows } = await supabase
+      const { data: rows } = await api
         .from("saves")
         .select("post_id, created_at")
         .eq("user_id", user!.id)
@@ -26,7 +26,7 @@ function SavedPosts() {
         .limit(200);
       const ids = (rows ?? []).map((r) => r.post_id);
       if (!ids.length) return [];
-      const { data: posts } = await supabase
+      const { data: posts } = await api
         .from("posts")
         .select("id, caption, user_id, post_media(url, order, kind)")
         .in("id", ids)
@@ -105,3 +105,4 @@ function SavedPosts() {
     </div>
   );
 }
+

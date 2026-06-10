@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 
 type CacheEntry = { url: string; expiresAt: number };
 const urlCache = new Map<string, CacheEntry>();
@@ -14,10 +14,11 @@ function cacheKey(bucket: string, path: string) {
 async function getSignedUrl(bucket: string, path: string): Promise<string | null> {
   const key = cacheKey(bucket, path);
   const hit = urlCache.get(key);
-  if (hit && hit.expiresAt - Date.now() > REFRESH_BEFORE_MS) return hit.url;
+  if (hit && hit.url.startsWith("http") && hit.expiresAt - Date.now() > REFRESH_BEFORE_MS) return hit.url;
+  if (hit && !hit.url.startsWith("http")) urlCache.delete(key);
   const inflight = pending.get(key);
   if (inflight) return inflight;
-  const p = supabase.storage
+  const p = api.storage
     .from(bucket)
     .createSignedUrl(path, TTL_SECONDS)
     .then(({ data }) => {
@@ -84,3 +85,4 @@ export function SignedMedia({
   }
   return <img src={url} alt={alt} className={className} loading="lazy" decoding="async" />;
 }
+

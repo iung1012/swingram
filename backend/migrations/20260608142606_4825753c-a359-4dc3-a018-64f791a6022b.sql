@@ -100,9 +100,10 @@ ALTER TABLE public.comment_likes REPLICA IDENTITY FULL;
 ALTER TABLE public.notifications REPLICA IDENTITY FULL;
 
 DO $$ BEGIN
-  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.posts; EXCEPTION WHEN duplicate_object THEN NULL; END;
-  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.likes; EXCEPTION WHEN duplicate_object THEN NULL; END;
-  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.comments; EXCEPTION WHEN duplicate_object THEN NULL; END;
-  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.comment_likes; EXCEPTION WHEN duplicate_object THEN NULL; END;
-  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION api_realtime ADD TABLE public.posts; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION api_realtime ADD TABLE public.likes; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION api_realtime ADD TABLE public.comments; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION api_realtime ADD TABLE public.comment_likes; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION api_realtime ADD TABLE public.notifications; EXCEPTION WHEN duplicate_object THEN NULL; END;
 END $$;
+

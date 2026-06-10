@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 
 export function useMyProfile(userId: string | undefined) {
   return useQuery({
@@ -7,7 +7,7 @@ export function useMyProfile(userId: string | undefined) {
     enabled: !!userId,
     queryFn: async () => {
       if (!userId) return null;
-      const { data } = await supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle();
+      const { data } = await api.from("profiles").select("*").eq("user_id", userId).maybeSingle();
       return data;
     },
   });
@@ -19,7 +19,7 @@ export function useIsStaff(userId: string | undefined) {
     enabled: !!userId,
     queryFn: async () => {
       if (!userId) return { admin: false, moderator: false, support: false };
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+      const { data } = await api.from("user_roles").select("role").eq("user_id", userId);
       const roles = (data ?? []).map((r) => r.role);
       return {
         admin: roles.includes("admin"),
@@ -29,3 +29,4 @@ export function useIsStaff(userId: string | undefined) {
     },
   });
 }
+

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { SignedMedia } from "@/components/signed-media";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { FireLike } from "@/components/fire-like";
@@ -28,13 +28,13 @@ export function ZoomPostContent({
   const { data: likeData } = useQuery({
     queryKey: ["post-likes", postId, currentUserId],
     queryFn: async () => {
-      const { count } = await supabase
+      const { count } = await api
         .from("likes")
         .select("post_id", { count: "exact", head: true })
         .eq("post_id", postId);
       let likedByMe = false;
       if (currentUserId) {
-        const { data: me } = await supabase
+        const { data: me } = await api
           .from("likes")
           .select("post_id")
           .eq("post_id", postId)
@@ -59,9 +59,9 @@ export function ZoomPostContent({
       likedByMe: next,
     });
     if (next) {
-      await supabase.from("likes").insert({ post_id: postId, user_id: currentUserId });
+      await api.from("likes").insert({ post_id: postId, user_id: currentUserId });
     } else {
-      await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", currentUserId);
+      await api.from("likes").delete().eq("post_id", postId).eq("user_id", currentUserId);
     }
     qc.invalidateQueries({ queryKey: ["post-likes", postId] });
     qc.invalidateQueries({ queryKey: ["feed"] });
@@ -71,7 +71,7 @@ export function ZoomPostContent({
   const { data: comments } = useQuery({
     queryKey: ["post-comments", postId],
     queryFn: async () => {
-      const { data: cs } = await supabase
+      const { data: cs } = await api
         .from("comments")
         .select("id, user_id, body, created_at")
         .eq("post_id", postId)
@@ -81,7 +81,7 @@ export function ZoomPostContent({
       const ids = Array.from(new Set((cs ?? []).map((c) => c.user_id)));
       let profilesMap = new Map<string, any>();
       if (ids.length) {
-        const { data: ps } = await supabase
+        const { data: ps } = await api
           .from("profiles")
           .select("user_id, handle, display_name, avatar_url, verified")
           .in("user_id", ids);
@@ -100,7 +100,7 @@ export function ZoomPostContent({
     const text = body.trim();
     if (!text) return;
     setSending(true);
-    const { error } = await supabase.from("comments").insert({
+    const { error } = await api.from("comments").insert({
       post_id: postId,
       user_id: currentUserId,
       body: text,
@@ -205,3 +205,4 @@ export function ZoomPostContent({
     </div>
   );
 }
+

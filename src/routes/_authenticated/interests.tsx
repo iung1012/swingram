@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
@@ -21,7 +21,7 @@ function InterestsPage() {
     queryKey: ["interests-inbox", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await api
         .from("interests_sent")
         .select(`id, from_user, to_user, status, created_at,
           sender:profiles!interests_sent_from_user_fkey(handle, display_name, avatar_url, verified)`)
@@ -33,14 +33,14 @@ function InterestsPage() {
   });
 
   async function respond(id: string, fromUser: string, accept: boolean) {
-    await supabase
+    await api
       .from("interests_sent")
       .update({ status: accept ? "accepted" : "rejected", responded_at: new Date().toISOString() })
       .eq("id", id);
     if (accept) {
       const a = user!.id < fromUser ? user!.id : fromUser;
       const b = user!.id < fromUser ? fromUser : user!.id;
-      await supabase
+      await api
         .from("conversations")
         .upsert({ user_a: a, user_b: b, unlocked: true }, { onConflict: "user_a,user_b" });
       toast.success("Aceito. Super chat liberado.");
@@ -115,3 +115,4 @@ function InterestsPage() {
     </div>
   );
 }
+

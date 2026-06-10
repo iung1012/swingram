@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, ChevronLeft, Heart, MessageCircle, CornerDownRight } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
@@ -24,7 +24,7 @@ function Notifications() {
     queryKey: ["notifications", user?.id ?? null],
     enabled: !!user,
     queryFn: async () => {
-      const { data: rows } = await supabase
+      const { data: rows } = await api
         .from("notifications")
         .select("id, actor_id, type, post_id, comment_id, read_at, created_at")
         .eq("user_id", user!.id)
@@ -33,7 +33,7 @@ function Notifications() {
       const ids = Array.from(new Set((rows ?? []).map((r) => r.actor_id)));
       let actors = new Map<string, { handle: string; display_name: string; avatar_url: string | null; verified: boolean }>();
       if (ids.length) {
-        const { data: ps } = await supabase
+        const { data: ps } = await api
           .from("profiles")
           .select("user_id, handle, display_name, avatar_url, verified")
           .in("user_id", ids);
@@ -58,7 +58,7 @@ function Notifications() {
     if (!user || !data || data.length === 0) return;
     const unread = data.filter((n) => !n.read_at).map((n) => n.id);
     if (!unread.length) return;
-    supabase
+    api
       .from("notifications")
       .update({ read_at: new Date().toISOString() })
       .in("id", unread)
@@ -149,3 +149,4 @@ function timeAgo(iso: string) {
   if (d < 7) return `${d}d`;
   return new Date(iso).toLocaleDateString("pt-BR");
 }
+

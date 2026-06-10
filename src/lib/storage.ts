@@ -1,9 +1,10 @@
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
+import { resolveApiBaseUrl } from "@/lib/api-base";
 
 export async function uploadToBucket(bucket: string, userId: string, file: File, subdir = "") {
   const ext = file.name.split(".").pop() || "bin";
   const path = `${userId}/${subdir ? subdir + "/" : ""}${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+  const { error } = await api.storage.from(bucket).upload(path, file, {
     contentType: file.type,
     upsert: false,
   });
@@ -11,8 +12,14 @@ export async function uploadToBucket(bucket: string, userId: string, file: File,
   return path;
 }
 
-export async function signedUrl(bucket: string, path: string, seconds = 3600) {
-  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, seconds);
-  if (error) throw error;
-  return data.signedUrl;
+function normalizeUrl(url: string) {
+  if (/^https?:\/\//i.test(url)) return url;
+  return new URL(url, resolveApiBaseUrl()).toString();
 }
+
+export async function signedUrl(bucket: string, path: string, seconds = 3600) {
+  const { data, error } = await api.storage.from(bucket).createSignedUrl(path, seconds);
+  if (error) throw error;
+  return normalizeUrl(data.signedUrl);
+}
+

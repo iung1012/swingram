@@ -15,7 +15,7 @@ import {
   Reply,
   ExternalLink,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { FireLike } from "./fire-like";
 import { SignedMedia } from "./signed-media";
 import { VerifiedAvatar } from "./verified-avatar";
@@ -134,7 +134,7 @@ export function PostCard({
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage: { items: CommentRow[]; nextCursor: string | null }) => lastPage.nextCursor,
     queryFn: async ({ pageParam }) => {
-      let q = supabase
+      let q = api
         .from("comments")
         .select("id, user_id, body, created_at, parent_id")
         .eq("post_id", post.id)
@@ -150,7 +150,7 @@ export function PostCard({
       const ids = Array.from(new Set(list.map((c) => c.user_id)));
       let profilesMap = new Map<string, { handle: string; display_name: string; avatar_url: string | null; verified: boolean }>();
       if (ids.length) {
-        const { data: ps } = await supabase
+        const { data: ps } = await api
           .from("profiles")
           .select("user_id, handle, display_name, avatar_url, verified")
           .in("user_id", ids);
@@ -163,7 +163,7 @@ export function PostCard({
       }
       const likesByComment = new Map<string, { count: number; mine: boolean; byAuthor: boolean }>();
       if (commentIds.length) {
-        const { data: cls } = await supabase
+        const { data: cls } = await api
           .from("comment_likes")
           .select("comment_id, user_id")
           .in("comment_id", commentIds);
@@ -227,7 +227,7 @@ export function PostCard({
     queryKey: ["post-likers", post.id],
     enabled: likesOpen,
     queryFn: async () => {
-      const { data: rows } = await supabase
+      const { data: rows } = await api
         .from("likes")
         .select("user_id")
         .eq("post_id", post.id)
@@ -235,7 +235,7 @@ export function PostCard({
         .limit(100);
       const ids = Array.from(new Set((rows ?? []).map((r) => r.user_id)));
       if (!ids.length) return [];
-      const { data: ps } = await supabase
+      const { data: ps } = await api
         .from("profiles")
         .select("user_id, handle, display_name, avatar_url, verified")
         .in("user_id", ids);
@@ -251,7 +251,7 @@ export function PostCard({
   });
 
   async function deleteComment(commentId: string) {
-    const { error } = await supabase.from("comments").delete().eq("id", commentId);
+    const { error } = await api.from("comments").delete().eq("id", commentId);
     if (error) toast.error("Falha ao apagar");
     else {
       toast.success("Comentário apagado");
@@ -264,9 +264,9 @@ export function PostCard({
   async function toggleCommentLike(commentId: string, liked: boolean) {
     if (!currentUserId) return;
     if (liked) {
-      await supabase.from("comment_likes").delete().eq("comment_id", commentId).eq("user_id", currentUserId);
+      await api.from("comment_likes").delete().eq("comment_id", commentId).eq("user_id", currentUserId);
     } else {
-      await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: currentUserId });
+      await api.from("comment_likes").insert({ comment_id: commentId, user_id: currentUserId });
     }
     qc.invalidateQueries({ queryKey: ["post-comments", post.id] });
   }
@@ -280,7 +280,7 @@ export function PostCard({
     const text = body.trim();
     if (!text) return;
     setSending(true);
-    const { error } = await supabase.from("comments").insert({
+    const { error } = await api.from("comments").insert({
       post_id: post.id,
       user_id: currentUserId,
       body: text,
@@ -303,8 +303,8 @@ export function PostCard({
     const next = !liked;
     setLiked(next);
     setLikes((l) => l + (next ? 1 : -1));
-    if (next) await supabase.from("likes").insert({ post_id: post.id, user_id: currentUserId });
-    else await supabase.from("likes").delete().eq("post_id", post.id).eq("user_id", currentUserId);
+    if (next) await api.from("likes").insert({ post_id: post.id, user_id: currentUserId });
+    else await api.from("likes").delete().eq("post_id", post.id).eq("user_id", currentUserId);
     qc.setQueryData(["post-likes", post.id, currentUserId], {
       likes: likes + (next ? 1 : -1),
       likedByMe: next,
@@ -318,13 +318,13 @@ export function PostCard({
     if (!currentUserId) return;
     const next = !saved;
     setSaved(next);
-    if (next) await supabase.from("saves").insert({ post_id: post.id, user_id: currentUserId });
-    else await supabase.from("saves").delete().eq("post_id", post.id).eq("user_id", currentUserId);
+    if (next) await api.from("saves").insert({ post_id: post.id, user_id: currentUserId });
+    else await api.from("saves").delete().eq("post_id", post.id).eq("user_id", currentUserId);
   }
 
   async function blockAuthor() {
     if (!currentUserId) return;
-    const { error } = await supabase
+    const { error } = await api
       .from("blocks")
       .insert({ user_id: currentUserId, blocked_user_id: post.user_id });
     if (error) toast.error("Falha ao bloquear");
@@ -358,7 +358,7 @@ export function PostCard({
     if (!currentUserId) return;
     const text = captionDraft.trim();
     setSavingEdit(true);
-    const { error } = await supabase
+    const { error } = await api
       .from("posts")
       .update({ caption: text || null })
       .eq("id", post.id);
@@ -378,7 +378,7 @@ export function PostCard({
   async function deletePost() {
     if (!currentUserId) return;
     setDeleting(true);
-    const { error } = await supabase
+    const { error } = await api
       .from("posts")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", post.id);
@@ -1005,3 +1005,4 @@ function CommentForm({
     </div>
   );
 }
+

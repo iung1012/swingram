@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { toast } from "sonner";
 import { Flag } from "lucide-react";
 
@@ -52,7 +52,7 @@ export function ReportDialog({
 
   async function submit() {
     setSubmitting(true);
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await api.auth.getUser();
     if (!user) {
       toast.error("Você precisa estar logado.");
       setSubmitting(false);
@@ -64,7 +64,7 @@ export function ReportDialog({
       return;
     }
     const priority = reason === "menor" || reason === "ncii" ? 1 : 5;
-    const { error } = await supabase.from("reports").insert({
+    const { error } = await api.from("reports").insert({
       reporter_id: user.id,
       target_type: targetType,
       target_id: targetId,
@@ -125,3 +125,4 @@ export function ReportDialog({
     </Dialog>
   );
 }
+

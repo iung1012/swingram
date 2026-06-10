@@ -1,9 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
 import { snapAndFuzz } from "@/lib/geo";
+import { PROFILE_VISIBILITY_OPTIONS, notifyPrivacyChanged, type ProfileVisibility } from "@/lib/privacy";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   MapPin, EyeOff, Eye, Navigation, ShieldCheck, Download, LogOut, Trash2, ChevronRight, ChevronLeft,
@@ -20,19 +29,40 @@ export const Route = createFileRoute("/_authenticated/settings")({
 function Settings() {
   const { user } = useAuth();
   const nav = useNavigate();
+  const qc = useQueryClient();
   const { data: profile, refetch } = useMyProfile(user?.id);
   if (!profile) return <SpiralLoaderBlock />;
 
   async function toggle(field: "share_location" | "invisible_mode" | "nsfw_blur_default", value: boolean) {
-    await supabase.from("profiles").update({ [field]: value } as never).eq("user_id", user!.id);
+    await api.from("profiles").update({ [field]: value } as never).eq("user_id", user!.id);
     refetch();
+    if (field === "share_location" || field === "invisible_mode") {
+      qc.invalidateQueries({ queryKey: ["feed"] });
+      qc.invalidateQueries({ queryKey: ["search-profiles"] });
+      qc.invalidateQueries({ queryKey: ["search-hashtag"] });
+      qc.invalidateQueries({ queryKey: ["stories-rail"] });
+      notifyPrivacyChanged();
+    }
+  }
+
+  async function setVisibility(value: ProfileVisibility) {
+    await api
+      .from("profiles")
+      .update({ profile_visibility: value } as never)
+      .eq("user_id", user!.id);
+    refetch();
+    qc.invalidateQueries({ queryKey: ["feed"] });
+    qc.invalidateQueries({ queryKey: ["search-profiles"] });
+    qc.invalidateQueries({ queryKey: ["search-hashtag"] });
+    qc.invalidateQueries({ queryKey: ["stories-rail"] });
+    notifyPrivacyChanged();
   }
 
   function refreshLocation() {
     if (!navigator.geolocation) return toast.error("Geolocalização indisponível");
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const snap = snapAndFuzz(user!.id, pos.coords.latitude, pos.coords.longitude);
-      await supabase.from("profiles").update({ ...snap, share_location: true }).eq("user_id", user!.id);
+      await api.from("profiles").update({ ...snap, share_location: true }).eq("user_id", user!.id);
       refetch();
       toast.success("Localização atualizada");
     });
@@ -41,11 +71,11 @@ function Settings() {
   async function exportData() {
     if (!user) return;
     const [{ data: prof }, { data: posts }, { data: msgs }, { data: likes }, { data: comments }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
-      supabase.from("posts").select("*, post_media(*)").eq("user_id", user.id),
-      supabase.from("messages").select("*").eq("sender_id", user.id),
-      supabase.from("likes").select("*").eq("user_id", user.id),
-      supabase.from("comments").select("*").eq("user_id", user.id),
+      api.from("profiles").select("*").eq("user_id", user.id).maybeSingle(),
+      api.from("posts").select("*, post_media(*)").eq("user_id", user.id),
+      api.from("messages").select("*").eq("sender_id", user.id),
+      api.from("likes").select("*").eq("user_id", user.id),
+      api.from("comments").select("*").eq("user_id", user.id),
     ]);
     const payload = { exported_at: new Date().toISOString(), profile: prof, posts, messages: msgs, likes, comments };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -57,14 +87,14 @@ function Settings() {
   }
 
   async function logout() {
-    await supabase.auth.signOut();
+    await api.auth.signOut();
     nav({ to: "/auth" });
   }
 
   async function deleteAccount() {
     if (!confirm("Tem certeza? Sua conta e dados serão removidos.")) return;
-    await supabase.from("profiles").update({ banned: true }).eq("user_id", user!.id);
-    await supabase.auth.signOut();
+    await api.from("profiles").update({ banned: true }).eq("user_id", user!.id);
+    await api.auth.signOut();
     nav({ to: "/auth" });
   }
 
@@ -80,6 +110,13 @@ function Settings() {
       </div>
 
       <Group title="Privacidade">
+        <SelectRow
+          label="Visibilidade do perfil"
+          desc="Quem pode aparecer na busca, feed e stories"
+          value={(profile as any).profile_visibility ?? "public"}
+          onChange={setVisibility}
+        />
+        <Divider />
         <ToggleRow
           icon={MapPin} iconBg="from-orange-400 to-red-500"
           label="Compartilhar localização"
@@ -90,7 +127,7 @@ function Settings() {
         <ToggleRow
           icon={profile.invisible_mode ? EyeOff : Eye} iconBg="from-slate-400 to-slate-600"
           label="Modo invisível"
-          desc="Some do mapa mas vê os outros"
+          desc="Some do mapa e da descoberta"
           checked={!!profile.invisible_mode} onChange={(v) => toggle("invisible_mode", v)}
         />
         <Divider />
@@ -167,6 +204,40 @@ function ToggleRow({ icon, iconBg, label, desc, checked, onChange }: {
   );
 }
 
+function SelectRow({
+  label,
+  desc,
+  value,
+  onChange,
+}: {
+  label: string;
+  desc: string;
+  value: ProfileVisibility;
+  onChange: (v: ProfileVisibility) => void;
+}) {
+  return (
+    <div className="px-3.5 py-3">
+      <p className="text-sm font-medium">{label}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>
+      <Select value={value} onValueChange={(v) => onChange(v as ProfileVisibility)}>
+        <SelectTrigger className="mt-3 h-10 rounded-xl bg-background">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {PROFILE_VISIBILITY_OPTIONS.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              <div className="flex flex-col items-start">
+                <span>{opt.label}</span>
+                <span className="text-[11px] text-muted-foreground">{opt.description}</span>
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 function ActionRow({ icon, iconBg, label, onClick, to, danger }: {
   icon: React.ComponentType<{ className?: string }>; iconBg: string; label: string;
   onClick?: () => void; to?: string; danger?: boolean;
@@ -185,3 +256,4 @@ function ActionRow({ icon, iconBg, label, onClick, to, danger }: {
     </button>
   );
 }
+

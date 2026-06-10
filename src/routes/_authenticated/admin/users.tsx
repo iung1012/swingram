@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { requireAdmin } from "@/lib/admin-guard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ function UsersAdmin() {
   const { data } = useQuery({
     queryKey: ["adm-users", q],
     queryFn: async () => {
-      let query = supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(50);
+      let query = api.from("profiles").select("*").order("created_at", { ascending: false }).limit(50);
       if (q) query = query.or(`handle.ilike.%${q}%,display_name.ilike.%${q}%`);
       const { data } = await query;
       return data ?? [];
@@ -31,7 +31,7 @@ function UsersAdmin() {
   });
 
   async function act(userId: string, action: "ban" | "unban" | "shadow" | "unshadow" | "verify" | "unverify") {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await api.auth.getUser();
     const updates: any =
       action === "ban" ? { banned: true } :
       action === "unban" ? { banned: false } :
@@ -39,8 +39,8 @@ function UsersAdmin() {
       action === "unshadow" ? { shadow_banned: false } :
       action === "verify" ? { verified: true, verified_at: new Date().toISOString() } :
       { verified: false };
-    await supabase.from("profiles").update(updates).eq("user_id", userId);
-    await supabase.from("audit_logs").insert({ admin_id: user!.id, action, target_type: "user", target_id: userId });
+    await api.from("profiles").update(updates).eq("user_id", userId);
+    await api.from("audit_logs").insert({ admin_id: user!.id, action, target_type: "user", target_id: userId });
     toast.success("OK");
     qc.invalidateQueries({ queryKey: ["adm-users"] });
   }
@@ -68,3 +68,4 @@ function UsersAdmin() {
     </div>
   );
 }
+

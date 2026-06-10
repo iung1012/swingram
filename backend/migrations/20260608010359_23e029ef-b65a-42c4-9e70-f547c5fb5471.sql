@@ -583,6 +583,7 @@ FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 -- =========================================================
 -- Realtime
 -- =========================================================
-ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.conversations;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.interests_sent;
+ALTER PUBLICATION api_realtime ADD TABLE public.messages;
+ALTER PUBLICATION api_realtime ADD TABLE public.conversations;
+ALTER PUBLICATION api_realtime ADD TABLE public.interests_sent;
+

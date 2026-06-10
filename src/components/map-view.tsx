@@ -3,10 +3,11 @@ import { Link } from "@tanstack/react-router";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Plus, Minus, Locate, Maximize2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
-import { useMyProfile } from "@/hooks/use-profile";
+import { useIsStaff, useMyProfile } from "@/hooks/use-profile";
 import { distanceKm, snapAndFuzz } from "@/lib/geo";
+import { canViewProfile, fetchPrivacyState } from "@/lib/privacy";
 import { Card } from "@/components/ui/card";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
@@ -36,10 +37,15 @@ function bboxKey(b: L.LatLngBounds) {
 async function fetchProfilesInBounds(
   b: L.LatLngBounds,
   excludeUserId: string | null,
+  viewerUserId: string | null,
+  isStaff: boolean,
 ): Promise<NearbyProfile[]> {
   const key = `${excludeUserId ?? "anon"}:${bboxKey(b)}`;
   const cached = regionCache.get(key);
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.rows;
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    const privacyState = await fetchPrivacyState(viewerUserId, cached.rows.map((r) => r.user_id));
+    return cached.rows.filter((row) => canViewProfile(row as any, viewerUserId, privacyState, isStaff));
+  }
 
   const padLng = (b.getEast() - b.getWest()) * 0.2;
   const padLat = (b.getNorth() - b.getSouth()) * 0.2;
@@ -48,9 +54,9 @@ async function fetchProfilesInBounds(
   const south = b.getSouth() - padLat;
   const north = b.getNorth() + padLat;
 
-  let q = supabase
+  let q = api
     .from("profiles")
-    .select("user_id, handle, display_name, avatar_url, verified, city, lat_snap, lng_snap")
+    .select("user_id, handle, display_name, avatar_url, verified, city, lat_snap, lng_snap, invisible_mode, profile_visibility")
     .gte("lat_snap", south)
     .lte("lat_snap", north)
     .gte("lng_snap", west)
@@ -67,12 +73,15 @@ async function fetchProfilesInBounds(
   const { data } = await q;
   const rows = (data ?? []) as NearbyProfile[];
   regionCache.set(key, { ts: Date.now(), rows });
-  return rows;
+  const privacyState = await fetchPrivacyState(viewerUserId, rows.map((r) => r.user_id));
+  return rows.filter((row) => canViewProfile(row as any, viewerUserId, privacyState, isStaff));
 }
 
 export default function MapView() {
   const { user } = useAuth();
   const { data: me } = useMyProfile(user?.id);
+  const { data: roles } = useIsStaff(user?.id);
+  const isStaff = !!roles && (roles.admin || roles.moderator || roles.support);
 
   // Live snapped position from the device geolocation API. Falls back to the
   // profile's stored lat_snap/lng_snap until the user grants permission.
@@ -115,7 +124,7 @@ export default function MapView() {
         setLivePos(next);
         setGeoLoading(false);
         try {
-          await supabase
+          await api
             .from("profiles")
             .update({ lat_snap: next.lat, lng_snap: next.lng })
             .eq("user_id", user.id);
@@ -168,7 +177,7 @@ export default function MapView() {
     const refresh = async () => {
       const myId = reqIdRef.current + 1;
       reqIdRef.current = myId;
-      const rows = await fetchProfilesInBounds(map.getBounds(), user?.id ?? null);
+      const rows = await fetchProfilesInBounds(map.getBounds(), user?.id ?? null, user?.id ?? null, isStaff);
       if (myId !== reqIdRef.current) return;
 
       // remove markers no longer present
@@ -210,6 +219,11 @@ export default function MapView() {
 
     map.on("moveend", scheduleRefresh);
     map.on("zoomend", scheduleRefresh);
+    const onPrivacyChanged = () => {
+      regionCache.clear();
+      scheduleRefresh();
+    };
+    window.addEventListener("privacy:changed", onPrivacyChanged);
 
     setTimeout(() => {
       map.invalidateSize();
@@ -221,13 +235,14 @@ export default function MapView() {
 
     return () => {
       if (moveTimerRef.current) window.clearTimeout(moveTimerRef.current);
+      window.removeEventListener("privacy:changed", onPrivacyChanged);
       ro.disconnect();
       map.remove();
       mapRef.current = null;
       markersRef.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [containerEl]);
+  }, [containerEl, user?.id, isStaff]);
 
   // self marker + recenter whenever our position changes
   useEffect(() => {
@@ -374,3 +389,4 @@ function ControlBtn({ onClick, children, label }: { onClick: () => void; childre
     </button>
   );
 }
+

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { uploadToBucket } from "@/lib/storage";
 import { snapAndFuzz } from "@/lib/geo";
+import { PROFILE_VISIBILITY_OPTIONS, type ProfileVisibility } from "@/lib/privacy";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   ssr: false,
@@ -35,6 +36,7 @@ function Onboarding() {
   const [interests, setInterests] = useState<string[]>([]);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [shareLocation, setShareLocation] = useState(false);
+  const [profileVisibility, setProfileVisibility] = useState<ProfileVisibility>("public");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -63,7 +65,7 @@ function Onboarding() {
 
       const snap = coords && shareLocation ? snapAndFuzz(user.id, coords.lat, coords.lng) : { lat_snap: null, lng_snap: null };
 
-      const { error } = await supabase.from("profiles").upsert({
+      const { error } = await api.from("profiles").upsert({
         user_id: user.id,
         handle: handle.toLowerCase(),
         display_name: displayName,
@@ -73,6 +75,7 @@ function Onboarding() {
         interests,
         city: city || null,
         avatar_url: avatarPath,
+        profile_visibility: profileVisibility,
         share_location: shareLocation,
         lat_snap: snap.lat_snap,
         lng_snap: snap.lng_snap,
@@ -152,6 +155,24 @@ function Onboarding() {
         {step === 3 && (
           <div className="space-y-4">
             <div className="rounded-lg border border-border p-3">
+              <p className="mb-2 text-sm font-semibold">Visibilidade do perfil</p>
+              <Select value={profileVisibility} onValueChange={(v) => setProfileVisibility(v as ProfileVisibility)}>
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROFILE_VISIBILITY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <div className="flex flex-col items-start">
+                        <span>{opt.label}</span>
+                        <span className="text-[11px] text-muted-foreground">{opt.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="rounded-lg border border-border p-3">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold">Compartilhar localização</p>
@@ -171,3 +192,4 @@ function Onboarding() {
     </div>
   );
 }
+

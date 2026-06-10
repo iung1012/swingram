@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
 import { computeAge } from "@/lib/age";
@@ -27,7 +27,7 @@ function AuthPage() {
     e.preventDefault();
     if (mode === "login") {
       setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await api.auth.signInWithPassword({ email, password });
       setLoading(false);
       if (error) return toast.error(error.message);
       nav({ to: "/home" });
@@ -37,7 +37,7 @@ function AuthPage() {
     if (computeAge(birthDate) < 18) return toast.error("Você precisa ter 18 anos ou mais.");
     if (password.length < 8) return toast.error("Senha precisa ter pelo menos 8 caracteres.");
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { error } = await api.auth.signUp({
       email,
       password,
       options: { emailRedirectTo: window.location.origin, data: { birth_date: birthDate } },
@@ -269,3 +269,4 @@ function GoogleIcon() {
     </svg>
   );
 }
+

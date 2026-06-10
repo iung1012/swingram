@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ function SecurityPage() {
     queryKey: ["2fa", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase.from("user_2fa").select("enabled").eq("user_id", user!.id).maybeSingle();
+      const { data } = await api.from("user_2fa").select("enabled").eq("user_id", user!.id).maybeSingle();
       return data;
     },
   });
@@ -72,7 +72,7 @@ function SecurityPage() {
     });
     const delta = totp.validate({ token: code.replace(/\s/g, ""), window: 1 });
     if (delta === null) return toast.error("Código inválido");
-    const { error } = await supabase.from("user_2fa").upsert({
+    const { error } = await api.from("user_2fa").upsert({
       user_id: user.id, totp_secret: setup.secret, enabled: true, backup_codes: setup.codes,
     });
     if (error) return toast.error(error.message);
@@ -84,7 +84,7 @@ function SecurityPage() {
   async function disable() {
     if (!user) return;
     if (!confirm("Desativar 2FA?")) return;
-    await supabase.from("user_2fa").update({ enabled: false }).eq("user_id", user.id);
+    await api.from("user_2fa").update({ enabled: false }).eq("user_id", user.id);
     qc.invalidateQueries({ queryKey: ["2fa", user.id] });
     toast.success("2FA desativado");
   }
@@ -137,3 +137,4 @@ function SecurityPage() {
     </div>
   );
 }
+

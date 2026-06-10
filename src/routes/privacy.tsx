@@ -131,7 +131,7 @@ function PrivacyPage() {
 
       <h3>8.1. Parceiros e Provedores</h3>
       <ul>
-        <li><strong>Supabase:</strong> Hospedagem de banco de dados e autenticação</li>
+        <li><strong>Flask + PostgreSQL:</strong> Hospedagem do backend, autenticação e banco de dados</li>
         <li><strong>Cloudflare:</strong> CDN e segurança de rede</li>
       </ul>
 

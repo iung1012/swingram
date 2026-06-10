@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
@@ -75,7 +75,7 @@ function ChatRoom() {
   const { data: conv } = useQuery({
     queryKey: ["conv", id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await api
         .from("conversations")
         .select("id, user_a, user_b, unlocked")
         .eq("id", id)
@@ -90,7 +90,7 @@ function ChatRoom() {
     queryKey: ["chat-other", otherId],
     enabled: !!otherId,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await api
         .from("profiles")
         .select("handle, display_name, avatar_url, verified")
         .eq("user_id", otherId!)
@@ -102,7 +102,7 @@ function ChatRoom() {
   const { data: messages } = useQuery({
     queryKey: ["msgs", id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await api
         .from("messages")
         .select("*")
         .eq("conversation_id", id)
@@ -112,7 +112,7 @@ function ChatRoom() {
   });
 
   useEffect(() => {
-    const channel = supabase
+    const channel = api
       .channel(`conv:${id}`)
       .on(
         "postgres_changes",
@@ -123,7 +123,7 @@ function ChatRoom() {
       )
       .subscribe();
     return () => {
-      supabase.removeChannel(channel);
+      api.removeChannel(channel);
     };
   }, [id, qc]);
 
@@ -134,7 +134,7 @@ function ChatRoom() {
       (m) => m.sender_id !== user.id && !m.read_at
     );
     if (!hasUnreadIncoming) return;
-    supabase
+    api
       .rpc("mark_messages_read", { p_conversation_id: id })
       .then(() => qc.invalidateQueries({ queryKey: ["msgs", id] }));
   }, [messages, user, id, qc]);
@@ -200,7 +200,7 @@ function ChatRoom() {
         media_path = await uploadToBucket("chat_media", user.id, pending.file, id);
         media_kind = pending.kind;
       }
-      const { error } = await supabase.from("messages").insert({
+      const { error } = await api.from("messages").insert({
         conversation_id: id,
         sender_id: user.id,
         body: body || null,
@@ -219,7 +219,7 @@ function ChatRoom() {
 
   async function blockUser() {
     if (!user || !otherId) return;
-    const { error } = await supabase
+    const { error } = await api
       .from("blocks")
       .insert({ user_id: user.id, blocked_user_id: otherId });
     if (error) return toast.error("Falha ao bloquear");
@@ -228,14 +228,14 @@ function ChatRoom() {
   }
 
   async function deleteConversation() {
-    const { error } = await supabase.from("conversations").delete().eq("id", id);
+    const { error } = await api.from("conversations").delete().eq("id", id);
     if (error) return toast.error("Falha ao excluir");
     toast.success("Conversa excluída");
     nav({ to: "/chat" });
   }
 
   async function deleteMessage(mid: string) {
-    const { error } = await supabase.from("messages").delete().eq("id", mid);
+    const { error } = await api.from("messages").delete().eq("id", mid);
     if (error) return toast.error("Falha ao excluir");
     qc.invalidateQueries({ queryKey: ["msgs", id] });
   }
@@ -533,3 +533,4 @@ function ChatRoom() {
     </div>
   );
 }
+

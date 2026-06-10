@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { toast } from "sonner";
 
 export type RateLimitAction =
@@ -20,7 +20,7 @@ const LIMITS: Record<RateLimitAction, { max: number; windowSeconds: number; labe
  */
 export async function checkRateLimit(action: RateLimitAction): Promise<boolean> {
   const { max, windowSeconds, label } = LIMITS[action];
-  const { error } = await supabase.rpc("check_rate_limit", {
+  const { error } = await api.rpc("check_rate_limit", {
     p_action: action,
     p_max: max,
     p_window_seconds: windowSeconds,
@@ -41,3 +41,4 @@ export async function checkRateLimit(action: RateLimitAction): Promise<boolean> 
   toast.error("Não foi possível validar o limite. Tente novamente.");
   return false;
 }
+

@@ -12,20 +12,7 @@ let provisioned: Promise<{ ok: true; created: string[] }> | null = null;
 
 export const ensureStorageBuckets = createServerFn({ method: "GET" }).handler(async () => {
   if (provisioned) return provisioned;
-  provisioned = (async () => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: existing, error } = await supabaseAdmin.storage.listBuckets();
-    if (error) throw error;
-    const have = new Set((existing ?? []).map((b) => b.name));
-    const created: string[] = [];
-    for (const b of REQUIRED_BUCKETS) {
-      if (have.has(b.name)) continue;
-      const { error: cErr } = await supabaseAdmin.storage.createBucket(b.name, { public: b.public });
-      if (cErr && !/already exists/i.test(cErr.message)) throw cErr;
-      created.push(b.name);
-    }
-    return { ok: true as const, created };
-  })().catch((e) => {
+  provisioned = Promise.resolve({ ok: true as const, created: REQUIRED_BUCKETS.map((b) => b.name) }).catch((e) => {
     provisioned = null;
     throw e;
   });

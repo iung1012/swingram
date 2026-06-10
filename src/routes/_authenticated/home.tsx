@@ -1,15 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
-import { useMyProfile } from "@/hooks/use-profile";
+import { useIsStaff, useMyProfile } from "@/hooks/use-profile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PostCard, type PostCardData } from "@/components/post-card";
 import { Flame, Search, Bell, Loader2 } from "lucide-react";
 import { SpiralLoaderBlock } from "@/components/spiral-loader";
 import { StoriesRail } from "@/components/stories-rail";
 import { useRealtimeNotifications } from "@/hooks/use-realtime";
+import { canViewProfile, fetchPrivacyState } from "@/lib/privacy";
 
 export const Route = createFileRoute("/_authenticated/home")({
   ssr: false,
@@ -22,7 +23,7 @@ type FeedMode = "all" | "recommended" | "following";
 const PAGE_SIZE = 12;
 
 async function fetchFollowingIds(userId: string): Promise<string[]> {
-  const { data } = await supabase
+  const { data } = await api
     .from("follows")
     .select("followee_id")
     .eq("follower_id", userId);
@@ -31,6 +32,7 @@ async function fetchFollowingIds(userId: string): Promise<string[]> {
 
 async function fetchFeedPage(
   currentUserId: string | null,
+  isStaff: boolean,
   mode: FeedMode,
   interests: string[],
   cursor: string | null,
@@ -42,7 +44,7 @@ async function fetchFeedPage(
     if (followingIds.length === 0) return { items: [], nextCursor: null };
   }
 
-  let q = supabase
+  let q = api
     .from("posts")
     .select(`id, user_id, caption, nsfw, created_at, post_media(url, order, kind)`)
     .eq("moderation_status", "approved")
@@ -64,17 +66,20 @@ async function fetchFeedPage(
   if (postRows.length === 0) return { items: [], nextCursor: null };
 
   const authorIds = Array.from(new Set(postRows.map((p) => p.user_id)));
-  const { data: authorsData } = await supabase
+  const { data: authorsData } = await api
     .from("profiles")
-    .select("user_id, handle, display_name, avatar_url, verified, interests, shadow_banned, banned")
+    .select("user_id, handle, display_name, avatar_url, verified, interests, shadow_banned, banned, invisible_mode, profile_visibility")
     .in("user_id", authorIds);
   type AuthorRow = NonNullable<typeof authorsData>[number];
   const authors = new Map<string, AuthorRow>();
   (authorsData ?? []).forEach((a) => authors.set(a.user_id, a));
 
+  const privacyState = await fetchPrivacyState(currentUserId, authorIds);
+
   let rows = postRows
     .map((p) => ({ ...p, profiles: authors.get(p.user_id) }))
-    .filter((p) => p.profiles && !p.profiles.shadow_banned && !p.profiles.banned);
+    .filter((p) => p.profiles && (isStaff || (!p.profiles.shadow_banned && !p.profiles.banned)))
+    .filter((p) => canViewProfile(p.profiles!, currentUserId, privacyState, isStaff));
 
   if (mode === "recommended" && interests.length > 0) {
     rows = rows.filter((p) =>
@@ -89,10 +94,10 @@ async function fetchFeedPage(
   const commentsMap: Record<string, number> = {};
   if (ids.length > 0) {
     const [{ data: likes }, { data: comments }, savesRes] = await Promise.all([
-      supabase.from("likes").select("post_id, user_id").in("post_id", ids),
-      supabase.from("comments").select("post_id").in("post_id", ids),
+      api.from("likes").select("post_id, user_id").in("post_id", ids),
+      api.from("comments").select("post_id").in("post_id", ids),
       currentUserId
-        ? supabase.from("saves").select("post_id").eq("user_id", currentUserId).in("post_id", ids)
+        ? api.from("saves").select("post_id").eq("user_id", currentUserId).in("post_id", ids)
         : Promise.resolve({ data: [] as Array<{ post_id: string }> }),
     ]);
     (likes ?? []).forEach((l) => {
@@ -109,7 +114,7 @@ async function fetchFeedPage(
   rows.forEach((r) => (r.post_media ?? []).forEach((m) => m?.url && mediaPaths.push(m.url)));
   const signedMedia = new Map<string, string>();
   if (mediaPaths.length > 0) {
-    const { data: signed } = await supabase.storage.from("posts").createSignedUrls(mediaPaths, 3600);
+    const { data: signed } = await api.storage.from("posts").createSignedUrls(mediaPaths, 3600);
     (signed ?? []).forEach((s) => {
       if (s.path && s.signedUrl) signedMedia.set(s.path, s.signedUrl);
     });
@@ -150,13 +155,15 @@ async function fetchFeedPage(
 function Home() {
   const { user } = useAuth();
   const { data: profile } = useMyProfile(user?.id);
+  const { data: staff } = useIsStaff(user?.id);
+  const isStaff = !!staff && (staff.admin || staff.moderator || staff.support);
   useRealtimeNotifications(user?.id);
 
   const { data: unread } = useQuery({
     queryKey: ["notifications-unread", user?.id ?? null],
     enabled: !!user,
     queryFn: async () => {
-      const { count } = await supabase
+      const { count } = await api
         .from("notifications")
         .select("id", { count: "exact", head: true })
         .eq("user_id", user!.id)
@@ -204,13 +211,13 @@ function Home() {
         </TabsList>
 
         <TabsContent value="recommended">
-          <Feed mode="recommended" userId={user?.id ?? null} interests={profile?.interests ?? []} defaultBlur={profile?.nsfw_blur_default ?? true} />
+          <Feed mode="recommended" userId={user?.id ?? null} isStaff={isStaff} interests={profile?.interests ?? []} defaultBlur={profile?.nsfw_blur_default ?? true} />
         </TabsContent>
         <TabsContent value="following">
-          <Feed mode="following" userId={user?.id ?? null} interests={profile?.interests ?? []} defaultBlur={profile?.nsfw_blur_default ?? true} />
+          <Feed mode="following" userId={user?.id ?? null} isStaff={isStaff} interests={profile?.interests ?? []} defaultBlur={profile?.nsfw_blur_default ?? true} />
         </TabsContent>
         <TabsContent value="all">
-          <Feed mode="all" userId={user?.id ?? null} interests={profile?.interests ?? []} defaultBlur={profile?.nsfw_blur_default ?? true} />
+          <Feed mode="all" userId={user?.id ?? null} isStaff={isStaff} interests={profile?.interests ?? []} defaultBlur={profile?.nsfw_blur_default ?? true} />
         </TabsContent>
       </Tabs>
     </div>
@@ -220,11 +227,13 @@ function Home() {
 function Feed({
   mode,
   userId,
+  isStaff,
   interests,
   defaultBlur,
 }: {
   mode: FeedMode;
   userId: string | null;
+  isStaff: boolean;
   interests: string[];
   defaultBlur: boolean;
 }) {
@@ -236,10 +245,10 @@ function Feed({
     fetchNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["feed", mode, userId, interestsKey],
+    queryKey: ["feed", mode, userId, interestsKey, isStaff],
     initialPageParam: null as string | null,
     getNextPageParam: (last: { items: PostCardData[]; nextCursor: string | null }) => last.nextCursor,
-    queryFn: ({ pageParam }) => fetchFeedPage(userId, mode, interests, pageParam),
+    queryFn: ({ pageParam }) => fetchFeedPage(userId, isStaff, mode, interests, pageParam),
   });
 
   const items = useMemo<PostCardData[]>(
@@ -299,3 +308,4 @@ function Feed({
     </div>
   );
 }
+

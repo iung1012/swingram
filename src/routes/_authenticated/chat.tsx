@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
@@ -18,7 +18,7 @@ function ChatList() {
     queryKey: ["convs", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await api
         .from("conversations")
         .select("id, user_a, user_b, unlocked")
         .or(`user_a.eq.${user!.id},user_b.eq.${user!.id}`)
@@ -28,7 +28,7 @@ function ChatList() {
         other: c.user_a === user!.id ? c.user_b : c.user_a,
       }));
       if (others.length === 0) return [];
-      const { data: profs } = await supabase
+      const { data: profs } = await api
         .from("profiles")
         .select("user_id, handle, display_name, avatar_url, verified")
         .in("user_id", others.map((o) => o.other));
@@ -113,3 +113,4 @@ function EmptyState() {
     </div>
   );
 }
+

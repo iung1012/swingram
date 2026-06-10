@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { SignedImage } from "@/components/signed-image";
 import { SignedMedia } from "@/components/signed-media";
@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { MessageCircle, Flame, Ban, MapPin, Grid3x3, Flag, UserPlus, UserCheck, Share2, Heart, Users, MoreVertical, Eye, BadgeCheck } from "lucide-react";
-import { useMyProfile } from "@/hooks/use-profile";
+import { useIsStaff, useMyProfile } from "@/hooks/use-profile";
 import { distanceKm } from "@/lib/geo";
+import { canViewProfile, effectiveVisibility, fetchPrivacyState, notifyPrivacyChanged, visibilityLabel } from "@/lib/privacy";
 
 
 
@@ -48,21 +49,33 @@ function PublicProfile() {
   const [zoomPost, setZoomPost] = useState<{ id: string; url: string | null; kind: "image" | "video" | "text"; caption: string } | null>(null);
   const [tab, setTab] = useState<"posts" | "photos">("posts");
   const { data: myProfile } = useMyProfile(user?.id);
+  const { data: roles } = useIsStaff(user?.id);
+  const isStaff = !!roles && (roles.admin || roles.moderator || roles.support);
 
 
-  const { data: profile } = useQuery({
+  const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ["profile-handle", handle],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("handle", handle).maybeSingle();
+      const { data } = await api.from("profiles").select("*").eq("handle", handle).maybeSingle();
       return data;
     },
   });
 
+  const { data: privacy } = useQuery({
+    queryKey: ["profile-privacy", profile?.user_id, user?.id],
+    enabled: !!profile,
+    queryFn: async () => fetchPrivacyState(user?.id ?? null, profile ? [profile.user_id] : []),
+  });
+
+  const visibility = profile ? effectiveVisibility(profile as any) : "public";
+  const canAccessProfile = !!profile && canViewProfile(profile as any, user?.id ?? null, privacy ?? { following: new Set(), blockedByMe: new Set(), blockedMe: new Set() }, isStaff);
+  const restricted = !!profile && !canAccessProfile;
+
   const { data: postCards } = useQuery<PostCardData[]>({
     queryKey: ["public-posts", profile?.user_id, user?.id],
-    enabled: !!profile,
+    enabled: !!profile && !restricted,
     queryFn: async () => {
-      const { data: rows } = await supabase
+      const { data: rows } = await api
         .from("posts")
         .select(`id, user_id, caption, nsfw, created_at, post_media(url, order, kind)`)
         .eq("user_id", profile!.user_id)
@@ -75,10 +88,10 @@ function PublicProfile() {
 
       const ids = postRows.map((r: any) => r.id);
       const [{ data: likes }, { data: comments }, savesRes] = await Promise.all([
-        supabase.from("likes").select("post_id, user_id").in("post_id", ids),
-        supabase.from("comments").select("post_id").in("post_id", ids),
+        api.from("likes").select("post_id, user_id").in("post_id", ids),
+        api.from("comments").select("post_id").in("post_id", ids),
         user?.id
-          ? supabase.from("saves").select("post_id").eq("user_id", user.id).in("post_id", ids)
+          ? api.from("saves").select("post_id").eq("user_id", user.id).in("post_id", ids)
           : Promise.resolve({ data: [] as any[] }),
       ]);
 
@@ -124,19 +137,19 @@ function PublicProfile() {
 
   const { data: stats } = useQuery({
     queryKey: ["profile-stats", profile?.user_id],
-    enabled: !!profile,
+    enabled: !!profile && !restricted,
     queryFn: async () => {
       const [followersRes, postIdsRes, viewsRes] = await Promise.all([
-        supabase
+        api
           .from("follows")
           .select("follower_id", { count: "exact", head: true })
           .eq("followee_id", profile!.user_id),
-        supabase
+        api
           .from("posts")
           .select("id")
           .eq("user_id", profile!.user_id)
           .is("deleted_at", null),
-        supabase
+        api
           .from("profile_views")
           .select("profile_id", { count: "exact", head: true })
           .eq("profile_id", profile!.user_id),
@@ -144,7 +157,7 @@ function PublicProfile() {
       const ids = (postIdsRes.data ?? []).map((p: any) => p.id);
       let likes = 0;
       if (ids.length) {
-        const { count } = await supabase
+        const { count } = await api
           .from("likes")
           .select("post_id", { count: "exact", head: true })
           .in("post_id", ids);
@@ -155,20 +168,20 @@ function PublicProfile() {
   });
 
   useEffect(() => {
-    if (!user || !profile || user.id === profile.user_id) return;
-    supabase
+    if (!user || !profile || user.id === profile.user_id || restricted) return;
+    api
       .from("profile_views")
       .insert({ profile_id: profile.user_id, viewer_id: user.id })
       .then(({ error }) => {
         if (!error) qc.invalidateQueries({ queryKey: ["profile-stats", profile.user_id] });
       });
-  }, [user?.id, profile?.user_id]);
+  }, [user?.id, profile?.user_id, restricted]);
 
   const { data: followState } = useQuery({
     queryKey: ["follow", user?.id, profile?.user_id],
-    enabled: !!user && !!profile && user.id !== profile.user_id,
+    enabled: !!user && !!profile && user.id !== profile.user_id && visibility !== "hidden",
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await api
         .from("follows")
         .select("follower_id")
         .eq("follower_id", user!.id)
@@ -182,14 +195,14 @@ function PublicProfile() {
   async function toggleFollow() {
     if (!user || !profile) return;
     if (followState?.following) {
-      await supabase
+      await api
         .from("follows")
         .delete()
         .eq("follower_id", user.id)
         .eq("followee_id", profile.user_id);
       toast.success("Você deixou de seguir");
     } else {
-      const { error } = await supabase
+      const { error } = await api
         .from("follows")
         .insert({ follower_id: user.id, followee_id: profile.user_id });
       if (error) return toast.error("Falha ao seguir");
@@ -197,6 +210,11 @@ function PublicProfile() {
     }
     qc.invalidateQueries({ queryKey: ["follow", user.id, profile.user_id] });
     qc.invalidateQueries({ queryKey: ["profile-stats", profile.user_id] });
+    qc.invalidateQueries({ queryKey: ["feed"] });
+    qc.invalidateQueries({ queryKey: ["search-profiles"] });
+    qc.invalidateQueries({ queryKey: ["search-hashtag"] });
+    qc.invalidateQueries({ queryKey: ["stories-rail"] });
+    notifyPrivacyChanged();
 
   }
 
@@ -217,7 +235,7 @@ function PublicProfile() {
     if (!user || !profile) return;
     const { checkRateLimit } = await import("@/lib/rate-limit");
     if (!(await checkRateLimit("send_interest"))) return;
-    const { error } = await supabase
+    const { error } = await api
       .from("interests_sent")
       .insert({ from_user: user.id, to_user: profile.user_id });
     if (error) {
@@ -230,7 +248,7 @@ function PublicProfile() {
     if (!user || !profile) return;
     const a = user.id < profile.user_id ? user.id : profile.user_id;
     const b = user.id < profile.user_id ? profile.user_id : user.id;
-    const { data: conv } = await supabase
+    const { data: conv } = await api
       .from("conversations")
       .select("id, unlocked")
       .or(`and(user_a.eq.${a},user_b.eq.${b}),and(user_a.eq.${b},user_b.eq.${a})`)
@@ -244,17 +262,66 @@ function PublicProfile() {
 
   async function blockUser() {
     if (!user || !profile) return;
-    await supabase.from("blocks").insert({ user_id: user.id, blocked_user_id: profile.user_id });
+    await api.from("blocks").insert({ user_id: user.id, blocked_user_id: profile.user_id });
     toast.success("Usuário bloqueado");
+    qc.invalidateQueries({ queryKey: ["feed"] });
+    qc.invalidateQueries({ queryKey: ["search-profiles"] });
+    qc.invalidateQueries({ queryKey: ["search-hashtag"] });
+    qc.invalidateQueries({ queryKey: ["stories-rail"] });
+    notifyPrivacyChanged();
     nav({ to: "/home" });
   }
 
-  if (!profile)
+  if (profileLoading)
     return (
       <div className="mx-auto max-w-2xl px-4 pt-10">
         <div className="h-44 animate-pulse rounded-2xl border border-border bg-card/60" />
       </div>
     );
+
+  if (!profile) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 pt-6">
+        <section className="rounded-2xl border border-border bg-card p-6 text-center">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Perfil indisponível
+          </p>
+          <h1 className="mt-2 text-xl font-semibold tracking-tight">
+            Não foi possível abrir este perfil
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            O usuário pode ter ocultado a conta, bloqueado você ou removido o perfil.
+          </p>
+        </section>
+      </div>
+    );
+  }
+
+  if (restricted && user?.id !== profile.user_id) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 pt-6">
+        <section className="rounded-2xl border border-border bg-card p-6 text-center">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            Perfil restrito
+          </p>
+          <h1 className="mt-2 text-xl font-semibold tracking-tight">
+            Este perfil está {visibilityLabel(visibility as any).toLowerCase()}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            O usuário escolheu limitar a visibilidade. {visibility === "followers" ? "Siga a conta para liberar o conteúdo quando permitido." : "Somente o dono e a moderação podem ver esse perfil."}
+          </p>
+          {visibility === "followers" && followState && !followState.following && (
+            <button
+              onClick={toggleFollow}
+              className="mt-4 inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"
+            >
+              Seguir
+            </button>
+          )}
+        </section>
+      </div>
+    );
+  }
 
   const isMe = user?.id === profile.user_id;
 
@@ -529,3 +596,4 @@ function PublicProfile() {
     </div>
   );
 }
+

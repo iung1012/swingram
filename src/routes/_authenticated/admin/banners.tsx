@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
 import { requireAdmin } from "@/lib/admin-guard";
 import { uploadToBucket } from "@/lib/storage";
@@ -30,7 +30,7 @@ function BannersAdmin() {
   const { data } = useQuery({
     queryKey: ["adm-banners"],
     queryFn: async () => {
-      const { data } = await supabase.from("banners").select("*").order("order");
+      const { data } = await api.from("banners").select("*").order("order");
       return data ?? [];
     },
   });
@@ -38,19 +38,19 @@ function BannersAdmin() {
   async function add() {
     if (!file || !user) return;
     const path = await uploadToBucket("banners", user.id, file, "banner");
-    await supabase.from("banners").insert({ image_url: path, link: link || null, position, active: true, order: (data?.length ?? 0) });
+    await api.from("banners").insert({ image_url: path, link: link || null, position, active: true, order: (data?.length ?? 0) });
     toast.success("Banner adicionado");
     setFile(null); setLink("");
     qc.invalidateQueries({ queryKey: ["adm-banners"] });
   }
 
   async function toggle(id: string, active: boolean) {
-    await supabase.from("banners").update({ active }).eq("id", id);
+    await api.from("banners").update({ active }).eq("id", id);
     qc.invalidateQueries({ queryKey: ["adm-banners"] });
   }
 
   async function remove(id: string) {
-    await supabase.from("banners").delete().eq("id", id);
+    await api.from("banners").delete().eq("id", id);
     qc.invalidateQueries({ queryKey: ["adm-banners"] });
   }
 
@@ -81,3 +81,4 @@ function BannersAdmin() {
     </div>
   );
 }
+

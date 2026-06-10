@@ -3,9 +3,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/integrations/api/client";
 import { useAuth } from "@/hooks/use-auth";
-import { useMyProfile } from "@/hooks/use-profile";
+import { useIsStaff, useMyProfile } from "@/hooks/use-profile";
 import { distanceKm } from "@/lib/geo";
 import { VerifiedAvatar } from "@/components/verified-avatar";
 import { VerifiedBadge } from "@/components/verified-badge";
@@ -29,6 +29,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { canViewProfile, fetchPrivacyState } from "@/lib/privacy";
 
 const searchSchema = z.object({
   q: z.string().catch("").default(""),
@@ -74,6 +75,8 @@ const INTERESTS = [
 function Search() {
   const { user } = useAuth();
   const { data: me } = useMyProfile(user?.id);
+  const { data: staff } = useIsStaff(user?.id);
+  const isStaff = !!staff && (staff.admin || staff.moderator || staff.support);
   const { q: qInit } = Route.useSearch();
   const [q, setQ] = useState(qInit);
   const [type, setType] = useState<string>("all");
@@ -102,12 +105,12 @@ function Search() {
 
   const { data: results, isLoading } = useQuery({
     enabled: !isHashtag,
-    queryKey: ["search-profiles", q, type, radius, city, selInterests, me?.lat_snap, me?.lng_snap],
+    queryKey: ["search-profiles", q, type, radius, city, selInterests, me?.lat_snap, me?.lng_snap, isStaff],
     queryFn: async () => {
-      let query = supabase
+      let query = api
         .from("profiles")
         .select(
-          "user_id, handle, display_name, avatar_url, verified, city, profile_type, interests, lat_snap, lng_snap, invisible_mode",
+          "user_id, handle, display_name, avatar_url, verified, city, profile_type, interests, lat_snap, lng_snap, invisible_mode, profile_visibility",
         )
         .eq("banned", false)
         .eq("shadow_banned", false)
@@ -121,7 +124,9 @@ function Search() {
       if (selInterests.length > 0)
         query = query.overlaps("interests", selInterests);
       const { data } = await query;
-      let rows = (data ?? []).filter((p: any) => !p.invisible_mode);
+      const rowsRaw = (data ?? []).filter((p: any) => !p.invisible_mode);
+      const privacyState = await fetchPrivacyState(user?.id ?? null, rowsRaw.map((p: any) => p.user_id));
+      let rows = rowsRaw.filter((p: any) => canViewProfile(p, user?.id ?? null, privacyState, isStaff));
       const r = parseInt(radius);
       if (r > 0 && me?.lat_snap && me?.lng_snap) {
         rows = rows.filter((p: any) => {
@@ -140,9 +145,9 @@ function Search() {
 
   const { data: tagResults, isLoading: tagLoading } = useQuery({
     enabled: isHashtag && tag.length > 0,
-    queryKey: ["search-hashtag", tag],
+    queryKey: ["search-hashtag", tag, isStaff],
     queryFn: async () => {
-      const { data: postsData } = await supabase
+      const { data: postsData } = await api
         .from("posts")
         .select("id, caption, user_id, created_at, post_media(url, order, kind)")
         .contains("hashtags", [tag])
@@ -154,13 +159,16 @@ function Search() {
       const ids = Array.from(new Set(rows.map((r: any) => r.user_id)));
       let authors = new Map<string, any>();
       if (ids.length) {
-        const { data: ps } = await supabase
+        const { data: ps } = await api
           .from("profiles")
-          .select("user_id, handle, display_name, avatar_url, verified")
+          .select("user_id, handle, display_name, avatar_url, verified, invisible_mode, profile_visibility")
           .in("user_id", ids);
         authors = new Map((ps ?? []).map((p: any) => [p.user_id, p]));
       }
-      return rows.map((r: any) => ({ ...r, author: authors.get(r.user_id) }));
+      const privacyState = await fetchPrivacyState(user?.id ?? null, ids);
+      return rows
+        .map((r: any) => ({ ...r, author: authors.get(r.user_id) }))
+        .filter((r: any) => canViewProfile(r.author, user?.id ?? null, privacyState, isStaff));
     },
   });
 
@@ -545,3 +553,4 @@ function ChipGroup({
     </div>
   );
 }
+
