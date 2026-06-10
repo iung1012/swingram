@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.engine import create_engine, make_url
 
 from .db import get_engine, refresh_metadata_cache
@@ -54,23 +55,49 @@ def _ensure_database_exists() -> None:
     if not database:
         raise RuntimeError("DATABASE_URL must include a database name")
 
-    if database == "postgres":
-        return
-
-    admin_engine = create_engine(
-        url.set(database="postgres"),
+    # If the target database already exists, stop here. This avoids assuming
+    # that the server exposes a `postgres` maintenance DB.
+    target_engine = create_engine(
+        url,
         future=True,
         pool_pre_ping=True,
         isolation_level="AUTOCOMMIT",
     )
     try:
-        with admin_engine.connect() as conn:
-            exists = conn.execute(text("select 1 from pg_database where datname = :name"), {"name": database}).first()
-            if exists:
-                return
-            conn.exec_driver_sql(f"create database {_quote_identifier(database)}")
+        with target_engine.connect() as conn:
+            conn.execute(text("select 1"))
+            return
+    except OperationalError:
+        pass
     finally:
-        admin_engine.dispose()
+        target_engine.dispose()
+
+    if database == "postgres":
+        return
+
+    for maintenance_db in ("template1", "postgres"):
+        admin_engine = create_engine(
+            url.set(database=maintenance_db),
+            future=True,
+            pool_pre_ping=True,
+            isolation_level="AUTOCOMMIT",
+        )
+        try:
+            with admin_engine.connect() as conn:
+                exists = conn.execute(
+                    text("select 1 from pg_database where datname = :name"),
+                    {"name": database},
+                ).first()
+                if exists:
+                    return
+                conn.exec_driver_sql(f"create database {_quote_identifier(database)}")
+                return
+        except OperationalError:
+            continue
+        finally:
+            admin_engine.dispose()
+
+    raise RuntimeError(f"Unable to verify or create database '{database}'")
 
 
 def _ensure_base_objects() -> None:
