@@ -59,6 +59,23 @@ async function main() {
     <title>Brasa Swing — Encontros adultos</title>
   </head>
   <body>
+    <script>
+      window.$_TSR = {
+        router: {
+          manifest: undefined,
+          dehydratedData: undefined,
+          lastMatchId: undefined,
+          matches: [],
+        },
+        h() {},
+        e() {},
+        c() {},
+        p(script) {
+          script();
+        },
+        buffer: [],
+      };
+    </script>
     <script type="module" src="${clientEntry}"></script>
   </body>
 </html>
