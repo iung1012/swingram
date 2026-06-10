@@ -35,8 +35,8 @@ services:
     depends_on:
       - frontend
       - backend
-    ports:
-      - "8080:80"
+    expose:
+      - "80"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=Host(`swingram.cc`)"
