@@ -27,17 +27,16 @@ services:
       - "80"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`swingram.cc`)"
-      - "traefik.http.routers.frontend.entrypoints=websecure"
-      - "traefik.http.routers.frontend.tls=true"
-      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.frontend.service=frontend"
-      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.brasa.rule=Host(`swingram.cc`)"
+      - "traefik.http.routers.brasa.entrypoints=websecure"
+      - "traefik.http.routers.brasa.tls=true"
+      - "traefik.http.routers.brasa.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.brasa.service=brasa-web"
+      - "traefik.http.services.brasa-web.loadbalancer.server.port=80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - default
-      - postgres17_default
     restart: unless-stopped
 
 networks:
