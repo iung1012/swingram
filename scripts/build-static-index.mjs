@@ -1,87 +1,43 @@
-import { readFile, writeFile, readdir, stat } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const clientDir = path.resolve("dist/client");
-const serverAssetsDir = path.resolve("dist/server/assets");
+const serverBundlePath = path.resolve("dist/server/server.js");
 
-async function findManifest() {
-  const entries = await readdir(serverAssetsDir);
-  const manifest = entries.find((name) => /^_tanstack-start-manifest_.*\.js$/.test(name));
-  if (!manifest) {
-    throw new Error("Unable to find TanStack Start manifest in dist/server/assets");
+async function loadServerHandler() {
+  const serverModule = await import(pathToFileURL(serverBundlePath).href);
+  const handler = serverModule.default;
+
+  if (typeof handler === "function") {
+    return handler;
   }
-  return path.join(serverAssetsDir, manifest);
+
+  if (handler && typeof handler.fetch === "function") {
+    return (request) => handler.fetch(request);
+  }
+
+  throw new Error("Unable to resolve a request handler from dist/server/server.js");
 }
 
 async function main() {
-  let clientEntry;
+  const handler = await loadServerHandler();
+  const response = await handler(new Request("http://localhost/"));
 
-  try {
-    const manifestPath = await findManifest();
-    const manifest = await readFile(manifestPath, "utf8");
-    const match =
-      manifest.match(/clientEntry\s*:\s*["']([^"']+)["']/) ??
-      manifest.match(/clientEntry\s*:\s*`([^`]+)`/);
-    if (match) {
-      clientEntry = match[1];
-    }
-  } catch {
-    // Fall through to the asset-based fallback below.
+  if (!response || typeof response.text !== "function") {
+    throw new Error("Prerender handler did not return a valid Response");
   }
 
-  if (!clientEntry) {
-    const assetsDir = path.join(clientDir, "assets");
-    const entries = await readdir(assetsDir, { withFileTypes: true });
-    const indexBundles = entries.filter((entry) => entry.isFile() && /^index-.*\.js$/.test(entry.name));
-    if (indexBundles.length === 0) {
-      throw new Error("Unable to locate the client entry bundle");
-    }
+  const html = await response.text();
 
-    const candidates = await Promise.all(
-      indexBundles.map(async (entry) => {
-        const fullPath = path.join(assetsDir, entry.name);
-        const info = await stat(fullPath);
-        return { name: entry.name, size: info.size };
-      }),
-    );
-
-    candidates.sort((a, b) => b.size - a.size);
-    clientEntry = `/assets/${candidates[0].name}`;
+  if (!html.includes("$_TSR")) {
+    throw new Error("Prerendered HTML did not include TanStack bootstrap data");
   }
-
-  const html = `<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0a0a0a" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <title>Brasa Swing — Encontros adultos</title>
-  </head>
-  <body>
-    <script>
-      window.$_TSR = {
-        router: {
-          manifest: undefined,
-          dehydratedData: undefined,
-          lastMatchId: undefined,
-          matches: [],
-        },
-        h() {},
-        e() {},
-        c() {},
-        p(script) {
-          script();
-        },
-        buffer: [],
-      };
-    </script>
-    <script type="module" src="${clientEntry}"></script>
-  </body>
-</html>
-`;
 
   await writeFile(path.join(clientDir, "index.html"), html, "utf8");
+
+  // Keep a lightweight copy for debugging build output if needed.
+  await writeFile(path.join(clientDir, "_shell.html"), html, "utf8");
 }
 
 await main();
