@@ -1,4 +1,4 @@
-import { readFile, writeFile, readdir } from "node:fs/promises";
+import { readFile, writeFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
 const clientDir = path.resolve("dist/client");
@@ -14,14 +14,41 @@ async function findManifest() {
 }
 
 async function main() {
-  const manifestPath = await findManifest();
-  const manifest = await readFile(manifestPath, "utf8");
-  const match = manifest.match(/clientEntry:\s*"([^"]+)"/);
-  if (!match) {
-    throw new Error("Unable to extract clientEntry from TanStack Start manifest");
+  let clientEntry;
+
+  try {
+    const manifestPath = await findManifest();
+    const manifest = await readFile(manifestPath, "utf8");
+    const match =
+      manifest.match(/clientEntry\s*:\s*["']([^"']+)["']/) ??
+      manifest.match(/clientEntry\s*:\s*`([^`]+)`/);
+    if (match) {
+      clientEntry = match[1];
+    }
+  } catch {
+    // Fall through to the asset-based fallback below.
   }
 
-  const clientEntry = match[1];
+  if (!clientEntry) {
+    const assetsDir = path.join(clientDir, "assets");
+    const entries = await readdir(assetsDir, { withFileTypes: true });
+    const indexBundles = entries.filter((entry) => entry.isFile() && /^index-.*\.js$/.test(entry.name));
+    if (indexBundles.length === 0) {
+      throw new Error("Unable to locate the client entry bundle");
+    }
+
+    const candidates = await Promise.all(
+      indexBundles.map(async (entry) => {
+        const fullPath = path.join(assetsDir, entry.name);
+        const info = await stat(fullPath);
+        return { name: entry.name, size: info.size };
+      }),
+    );
+
+    candidates.sort((a, b) => b.size - a.size);
+    clientEntry = `/assets/${candidates[0].name}`;
+  }
+
   const html = `<!doctype html>
 <html lang="pt-BR">
   <head>
