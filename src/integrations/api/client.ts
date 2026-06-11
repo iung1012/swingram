@@ -16,6 +16,8 @@ export type Session = {
   user: User;
 };
 
+type OAuthProvider = "google";
+
 type ApiOk<T> = { data: T; error: null; count?: number };
 type ApiErr = { data: null; error: { message: string }; count?: number };
 type ApiResult<T> = ApiOk<T> | ApiErr;
@@ -244,6 +246,22 @@ class AuthClient {
     if (!session) return { data: null, error: { message: "Invalid sign-up response" } };
     this.setSessionInternal(session, "SIGNED_IN");
     return { data: { user: session.user, session }, error: null };
+  }
+
+  async signInWithOAuth(provider: OAuthProvider, options?: { redirectTo?: string }) {
+    const result = await postJson<{ url: string }>("/api/auth/oauth/google", {
+      provider,
+      redirect_to: options?.redirectTo,
+    });
+    if (result.error) return { data: null, error: result.error, redirected: false };
+    if (!result.data?.url) return { data: null, error: { message: "Invalid OAuth response" }, redirected: false };
+
+    if (typeof window !== "undefined") {
+      window.location.assign(result.data.url);
+      return { data: result.data, error: null, redirected: true };
+    }
+
+    return { data: result.data, error: null, redirected: false };
   }
 
   async setSession(tokens: any) {

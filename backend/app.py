@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import os
 import re
+import secrets
 import sys
+import urllib.parse
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
 from typing import Any
 
 import jwt
-from flask import Flask, Response, g, jsonify, request, send_file
+from flask import Flask, Response, g, jsonify, redirect, request, send_file
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -30,6 +33,9 @@ load_project_env()
 
 JWT_SECRET = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")
 JWT_EXPIRY_SECONDS = int(os.getenv("JWT_EXPIRY_SECONDS", str(60 * 60 * 24 * 30)))
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_TOKENINFO_URL = "https://oauth2.googleapis.com/tokeninfo"
 
 app = Flask(__name__)
 CORS(
@@ -139,6 +145,106 @@ def _profile_for_user(conn, user_id: str) -> dict[str, Any] | None:
         {"id": user_id},
     ).mappings().first()
     return dict(row) if row else None
+
+
+def _public_api_base_url() -> str:
+    configured = os.getenv("PUBLIC_API_BASE_URL") or os.getenv("API_BASE_URL")
+    if configured:
+        return configured.rstrip("/")
+    return request.host_url.rstrip("/")
+
+
+def _google_redirect_uri() -> str:
+    return os.getenv("GOOGLE_REDIRECT_URI") or f"{_public_api_base_url()}/api/auth/oauth/google/callback"
+
+
+def _json_request(url: str, data: dict[str, str] | None = None) -> dict[str, Any]:
+    encoded = urllib.parse.urlencode(data or {}).encode("utf-8") if data is not None else None
+    req = urllib.request.Request(
+        url,
+        data=encoded,
+        headers={"content-type": "application/x-www-form-urlencoded"} if data is not None else {},
+        method="POST" if data is not None else "GET",
+    )
+    with urllib.request.urlopen(req, timeout=15) as response:
+        return __import__("json").loads(response.read().decode("utf-8"))
+
+
+def _oauth_state(payload: dict[str, Any]) -> str:
+    return jwt.encode(
+        {
+            **payload,
+            "nonce": secrets.token_urlsafe(16),
+            "exp": int((datetime.now(timezone.utc) + timedelta(minutes=10)).timestamp()),
+        },
+        JWT_SECRET,
+        algorithm="HS256",
+    )
+
+
+def _decode_oauth_state(state: str) -> dict[str, Any]:
+    return jwt.decode(state, JWT_SECRET, algorithms=["HS256"])
+
+
+def _frontend_oauth_redirect(return_to: str, params: dict[str, Any]):
+    parsed = urllib.parse.urlparse(return_to)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return_to = "/auth"
+    fragment = urllib.parse.urlencode({k: v for k, v in params.items() if v is not None})
+    return redirect(f"{return_to}#{fragment}")
+
+
+def _upsert_google_user(conn, google_user: dict[str, Any]) -> dict[str, Any]:
+    email = (google_user.get("email") or "").strip().lower()
+    if not email:
+        raise ValueError("Google did not return an email address")
+
+    existing = _get_user_by_email(conn, email)
+    meta = {
+        "provider": "google",
+        "google_sub": google_user.get("sub"),
+        "email_verified": google_user.get("email_verified"),
+        "name": google_user.get("name"),
+        "avatar_url": google_user.get("picture"),
+    }
+
+    if existing:
+        current_meta = existing.get("raw_user_meta_data") or {}
+        row = conn.execute(
+            __import__("sqlalchemy").text(
+                """
+                update auth.users
+                set raw_user_meta_data = cast(:meta as jsonb),
+                    last_sign_in_at = now(),
+                    updated_at = now()
+                where id = :id
+                returning *
+                """
+            ),
+            {
+                "id": existing["id"],
+                "meta": __import__("json").dumps({**current_meta, **meta}),
+            },
+        ).mappings().first()
+        return dict(row) if row else existing
+
+    row = conn.execute(
+        __import__("sqlalchemy").text(
+            """
+            insert into auth.users (email, encrypted_password, raw_user_meta_data, last_sign_in_at)
+            values (:email, :password, cast(:meta as jsonb), now())
+            returning *
+            """
+        ),
+        {
+            "email": email,
+            "password": generate_password_hash(secrets.token_urlsafe(48)),
+            "meta": __import__("json").dumps(meta),
+        },
+    ).mappings().first()
+    if not row:
+        raise RuntimeError("Failed to create Google account")
+    return dict(row)
 
 
 def _roles_for_user(conn, user_id: str) -> list[str]:
@@ -265,8 +371,80 @@ def me():
 
 
 @app.post("/api/auth/oauth/<provider>")
-def oauth_not_supported(provider: str):
-    return _json({"error": {"message": f"OAuth provider '{provider}' is not configured"}}, 501)
+def oauth_start(provider: str):
+    if provider != "google":
+        return _json({"error": {"message": f"OAuth provider '{provider}' is not configured"}}, 501)
+
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    if not client_id:
+        return _json({"error": {"message": "GOOGLE_CLIENT_ID is not configured"}}, 500)
+
+    payload = request.get_json(silent=True) or {}
+    return_to = payload.get("redirect_to") or request.headers.get("Origin") or "/auth"
+    params = {
+        "client_id": client_id,
+        "redirect_uri": _google_redirect_uri(),
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": _oauth_state({"return_to": return_to}),
+        "prompt": "select_account",
+    }
+    return _json({"data": {"url": f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}"}, "error": None})
+
+
+@app.get("/api/auth/oauth/google/callback")
+def google_oauth_callback():
+    state = request.args.get("state") or ""
+    try:
+        decoded_state = _decode_oauth_state(state)
+    except Exception:
+        decoded_state = {"return_to": "/auth"}
+    return_to = decoded_state.get("return_to") or "/auth"
+
+    if request.args.get("error"):
+        return _frontend_oauth_redirect(return_to, {"error": request.args.get("error_description") or request.args.get("error")})
+
+    code = request.args.get("code")
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    if not code or not client_id or not client_secret:
+        return _frontend_oauth_redirect(return_to, {"error": "Google OAuth is not configured"})
+
+    try:
+        token_payload = _json_request(
+            GOOGLE_TOKEN_URL,
+            {
+                "code": code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": _google_redirect_uri(),
+                "grant_type": "authorization_code",
+            },
+        )
+        id_token = token_payload.get("id_token")
+        if not id_token:
+            raise ValueError("Google did not return an id_token")
+
+        google_user = _json_request(f"{GOOGLE_TOKENINFO_URL}?{urllib.parse.urlencode({'id_token': id_token})}")
+        if google_user.get("aud") != client_id:
+            raise ValueError("Invalid Google token audience")
+        if google_user.get("email_verified") not in {True, "true", "True"}:
+            raise ValueError("Google email is not verified")
+
+        with db_connection() as conn:
+            user = _upsert_google_user(conn, google_user)
+            token = _encode_token(user)
+
+        return _frontend_oauth_redirect(
+            return_to,
+            {
+                "access_token": token,
+                "token_type": "bearer",
+                "expires_in": JWT_EXPIRY_SECONDS,
+            },
+        )
+    except Exception as exc:
+        return _frontend_oauth_redirect(return_to, {"error": str(exc) or "Falha no login com Google"})
 
 
 def _apply_filters(sql: str, params: dict[str, Any], filters: list[dict[str, Any]] | None, or_expression: str | None) -> tuple[str, dict[str, Any]]:

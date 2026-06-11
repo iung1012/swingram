@@ -139,21 +139,48 @@ def _ensure_base_objects() -> None:
         )
 
 
+def _ensure_schema_repairs() -> None:
+    engine = get_engine()
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            """
+            DO $$
+            BEGIN
+              CREATE TYPE public.profile_visibility AS ENUM ('public', 'followers', 'hidden');
+            EXCEPTION
+              WHEN duplicate_object THEN NULL;
+            END $$;
+            """
+        )
+        conn.exec_driver_sql(
+            """
+            ALTER TABLE public.profiles
+              ADD COLUMN IF NOT EXISTS profile_visibility public.profile_visibility NOT NULL DEFAULT 'public'
+            """
+        )
+        conn.exec_driver_sql(
+            """
+            UPDATE public.profiles
+            SET profile_visibility = 'hidden'
+            WHERE COALESCE(invisible_mode, false) = true
+              AND COALESCE(profile_visibility, 'public'::public.profile_visibility) <> 'hidden'::public.profile_visibility
+            """
+        )
+
+
 def bootstrap_database() -> None:
     _ensure_database_exists()
     _ensure_base_objects()
     engine = get_engine()
     with engine.begin() as conn:
         marker = conn.execute(text("select 1 from public._bootstrap_marker where id = 1")).first()
-        if marker:
-            refresh_metadata_cache()
-            return
+        if not marker:
+            for migration in sorted(MIGRATIONS_DIR.glob("*.sql")):
+                sql = _escape_psycopg_percents(_load_sql(migration))
+                if sql.strip():
+                    conn.exec_driver_sql(sql)
 
-        for migration in sorted(MIGRATIONS_DIR.glob("*.sql")):
-            sql = _escape_psycopg_percents(_load_sql(migration))
-            if sql.strip():
-                conn.exec_driver_sql(sql)
+            conn.execute(text("insert into public._bootstrap_marker (id) values (1)"))
 
-        conn.execute(text("insert into public._bootstrap_marker (id) values (1)"))
-
+    _ensure_schema_repairs()
     refresh_metadata_cache()

@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { api } from "@/integrations/api/client";
-import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
 import { computeAge } from "@/lib/age";
 import { BrasaLogo } from "@/components/brasa-logo";
@@ -22,6 +21,32 @@ function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [birthDate, setBirthDate] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.location.hash) return;
+
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const error = hash.get("error");
+    const token = hash.get("access_token");
+
+    if (error) {
+      window.history.replaceState(null, "", window.location.pathname);
+      toast.error(error);
+      return;
+    }
+
+    if (!token) return;
+
+    window.history.replaceState(null, "", window.location.pathname);
+    api.auth.setSession({
+      access_token: token,
+      token_type: hash.get("token_type") ?? "bearer",
+      expires_in: Number(hash.get("expires_in") ?? 0),
+    }).then(({ error }) => {
+      if (error) return toast.error(error.message);
+      nav({ to: "/home" });
+    });
+  }, [nav]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,8 +74,8 @@ function AuthPage() {
   }
 
   async function google() {
-    const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
-    if (r.error) return toast.error("Falha no login com Google");
+    const r = await api.auth.signInWithOAuth("google", { redirectTo: `${window.location.origin}/auth` });
+    if (r.error) return toast.error(r.error.message || "Falha no login com Google");
     if (r.redirected) return;
     nav({ to: "/home" });
   }

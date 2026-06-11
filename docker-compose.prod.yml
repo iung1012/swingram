@@ -8,6 +8,7 @@ services:
     environment:
       PORT: "5005"
       API_BASE_URL: "/"
+      PUBLIC_API_BASE_URL: "${PUBLIC_API_BASE_URL:-https://swingram.cc}"
     volumes:
       - ./backend_data/storage:/app/backend_data/storage
     networks:
