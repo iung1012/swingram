@@ -166,6 +166,195 @@ def _ensure_schema_repairs() -> None:
               AND COALESCE(profile_visibility, 'public'::public.profile_visibility) <> 'hidden'::public.profile_visibility
             """
         )
+        _ensure_moderation_queue(conn)
+
+
+# SQL that turns moderation_queue into a live, unified review queue. Items are
+# enqueued by triggers (so the queue is correct regardless of which client path
+# created the content) and the queue rows are kept in sync when the underlying
+# item is moderated from any of the admin screens.
+_MODERATION_QUEUE_SQL: tuple[str, ...] = (
+    # Resolution metadata + dedup guard (one pending row per item).
+    """
+    ALTER TABLE public.moderation_queue
+      ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'system',
+      ADD COLUMN IF NOT EXISTS reason text,
+      ADD COLUMN IF NOT EXISTS resolved_by uuid,
+      ADD COLUMN IF NOT EXISTS resolved_at timestamptz,
+      ADD COLUMN IF NOT EXISTS notes text
+    """,
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS moderation_queue_pending_idx
+      ON public.moderation_queue (item_type, item_id)
+      WHERE status = 'pending'
+    """,
+    # --- Enqueue: new posts ---------------------------------------------------
+    """
+    CREATE OR REPLACE FUNCTION public.enqueue_post_moderation()
+    RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    BEGIN
+      INSERT INTO public.moderation_queue (item_type, item_id, status, priority, source)
+      SELECT 'post'::public.mod_item_type, NEW.id, 'pending'::public.moderation_status,
+             CASE WHEN NEW.nsfw THEN 3 ELSE 5 END, 'auto'
+      WHERE NEW.moderation_status = 'pending'
+        AND NOT EXISTS (
+          SELECT 1 FROM public.moderation_queue
+          WHERE item_type = 'post' AND item_id = NEW.id AND status = 'pending'
+        );
+      RETURN NEW;
+    END;
+    $$
+    """,
+    "DROP TRIGGER IF EXISTS trg_enqueue_post_moderation ON public.posts",
+    """
+    CREATE TRIGGER trg_enqueue_post_moderation
+      AFTER INSERT ON public.posts
+      FOR EACH ROW EXECUTE FUNCTION public.enqueue_post_moderation()
+    """,
+    # --- Enqueue: new verification requests -----------------------------------
+    """
+    CREATE OR REPLACE FUNCTION public.enqueue_verification_moderation()
+    RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    BEGIN
+      INSERT INTO public.moderation_queue (item_type, item_id, status, priority, source)
+      SELECT 'verification'::public.mod_item_type, NEW.id, 'pending'::public.moderation_status, 4, 'auto'
+      WHERE NEW.status = 'pending'
+        AND NOT EXISTS (
+          SELECT 1 FROM public.moderation_queue
+          WHERE item_type = 'verification' AND item_id = NEW.id AND status = 'pending'
+        );
+      RETURN NEW;
+    END;
+    $$
+    """,
+    "DROP TRIGGER IF EXISTS trg_enqueue_verification_moderation ON public.verification_requests",
+    """
+    CREATE TRIGGER trg_enqueue_verification_moderation
+      AFTER INSERT ON public.verification_requests
+      FOR EACH ROW EXECUTE FUNCTION public.enqueue_verification_moderation()
+    """,
+    # --- Enqueue: reported content (post/comment/message) ---------------------
+    """
+    CREATE OR REPLACE FUNCTION public.enqueue_report_moderation()
+    RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    DECLARE
+      it public.mod_item_type;
+      target uuid;
+    BEGIN
+      it := CASE NEW.target_type
+              WHEN 'post' THEN 'post'::public.mod_item_type
+              WHEN 'comment' THEN 'comment'::public.mod_item_type
+              WHEN 'message' THEN 'message'::public.mod_item_type
+              ELSE NULL END;
+      IF it IS NULL THEN
+        RETURN NEW;
+      END IF;
+      target := NEW.target_id::uuid;
+      UPDATE public.moderation_queue
+        SET priority = LEAST(priority, NEW.priority),
+            source = 'report',
+            reason = COALESCE(reason, NEW.reason)
+        WHERE item_type = it AND item_id = target AND status = 'pending';
+      IF NOT FOUND THEN
+        INSERT INTO public.moderation_queue (item_type, item_id, status, priority, source, reason)
+        VALUES (it, target, 'pending'::public.moderation_status, NEW.priority, 'report', NEW.reason);
+      END IF;
+      RETURN NEW;
+    EXCEPTION WHEN invalid_text_representation THEN
+      RETURN NEW;  -- target_id was not a uuid; nothing to enqueue
+    END;
+    $$
+    """,
+    "DROP TRIGGER IF EXISTS trg_enqueue_report_moderation ON public.reports",
+    """
+    CREATE TRIGGER trg_enqueue_report_moderation
+      AFTER INSERT ON public.reports
+      FOR EACH ROW EXECUTE FUNCTION public.enqueue_report_moderation()
+    """,
+    # --- Sync: closing the queue when an item is moderated elsewhere ----------
+    """
+    CREATE OR REPLACE FUNCTION public.sync_post_moderation()
+    RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    BEGIN
+      IF NEW.moderation_status IS DISTINCT FROM OLD.moderation_status
+         AND NEW.moderation_status <> 'pending' THEN
+        UPDATE public.moderation_queue
+          SET status = NEW.moderation_status, resolved_at = now()
+          WHERE item_type = 'post' AND item_id = NEW.id AND status = 'pending';
+      END IF;
+      RETURN NEW;
+    END;
+    $$
+    """,
+    "DROP TRIGGER IF EXISTS trg_sync_post_moderation ON public.posts",
+    """
+    CREATE TRIGGER trg_sync_post_moderation
+      AFTER UPDATE ON public.posts
+      FOR EACH ROW EXECUTE FUNCTION public.sync_post_moderation()
+    """,
+    """
+    CREATE OR REPLACE FUNCTION public.sync_verification_moderation()
+    RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    BEGIN
+      IF NEW.status IS DISTINCT FROM OLD.status AND NEW.status <> 'pending' THEN
+        UPDATE public.moderation_queue
+          SET status = NEW.status::text::public.moderation_status, resolved_at = now()
+          WHERE item_type = 'verification' AND item_id = NEW.id AND status = 'pending';
+      END IF;
+      RETURN NEW;
+    END;
+    $$
+    """,
+    "DROP TRIGGER IF EXISTS trg_sync_verification_moderation ON public.verification_requests",
+    """
+    CREATE TRIGGER trg_sync_verification_moderation
+      AFTER UPDATE ON public.verification_requests
+      FOR EACH ROW EXECUTE FUNCTION public.sync_verification_moderation()
+    """,
+    """
+    CREATE OR REPLACE FUNCTION public.sync_comment_moderation()
+    RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    BEGIN
+      IF NEW.status = 'removed' AND NEW.status IS DISTINCT FROM OLD.status THEN
+        UPDATE public.moderation_queue
+          SET status = 'rejected', resolved_at = now()
+          WHERE item_type = 'comment' AND item_id = NEW.id AND status = 'pending';
+      END IF;
+      RETURN NEW;
+    END;
+    $$
+    """,
+    "DROP TRIGGER IF EXISTS trg_sync_comment_moderation ON public.comments",
+    """
+    CREATE TRIGGER trg_sync_comment_moderation
+      AFTER UPDATE ON public.comments
+      FOR EACH ROW EXECUTE FUNCTION public.sync_comment_moderation()
+    """,
+    """
+    CREATE OR REPLACE FUNCTION public.sync_message_moderation()
+    RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    BEGIN
+      IF NEW.status = 'removed' AND NEW.status IS DISTINCT FROM OLD.status THEN
+        UPDATE public.moderation_queue
+          SET status = 'rejected', resolved_at = now()
+          WHERE item_type = 'message' AND item_id = NEW.id AND status = 'pending';
+      END IF;
+      RETURN NEW;
+    END;
+    $$
+    """,
+    "DROP TRIGGER IF EXISTS trg_sync_message_moderation ON public.messages",
+    """
+    CREATE TRIGGER trg_sync_message_moderation
+      AFTER UPDATE ON public.messages
+      FOR EACH ROW EXECUTE FUNCTION public.sync_message_moderation()
+    """,
+)
+
+
+def _ensure_moderation_queue(conn) -> None:
+    for statement in _MODERATION_QUEUE_SQL:
+        conn.exec_driver_sql(statement)
 
 
 def bootstrap_database() -> None:

@@ -1,87 +1,50 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { api } from "@/integrations/api/client";
 
-type Table = "likes" | "comments" | "comment_likes" | "notifications" | "posts";
+// The self-hosted backend does not expose a realtime/websocket channel, so we
+// fall back to lightweight polling: while the tab is visible we periodically
+// invalidate the relevant query keys, keeping counts and lists eventually
+// fresh without holding a persistent connection.
+const POLL_MS = 15000;
+
+function usePolledInvalidation(enabled: boolean, keys: string[][], deps: unknown[]) {
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!enabled || keys.length === 0) return;
+    const tick = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      keys.forEach((k) => qc.invalidateQueries({ queryKey: k }));
+    };
+    const id = window.setInterval(tick, POLL_MS);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}
 
 /**
- * Subscribes to realtime changes on a table for a single post and invalidates
- * the supplied query keys when a change arrives.
+ * Keeps the like/comment data for a single post fresh by polling while the
+ * post is on screen.
  */
 export function useRealtimePost(
   postId: string | null | undefined,
   opts?: { likes?: boolean; comments?: boolean; commentLikes?: boolean },
 ) {
-  const qc = useQueryClient();
-  useEffect(() => {
-    if (!postId) return;
-    const channels: ReturnType<typeof api.channel>[] = [];
-    const subscribe = (table: Table, filter: string, keys: string[][]) => {
-      const ch = api
-        .channel(`rt-${table}-${postId}-${Math.random().toString(36).slice(2)}`)
-        .on(
-          "postgres_changes" as never,
-          { event: "*", schema: "public", table, filter } as never,
-          () => {
-            keys.forEach((k) => qc.invalidateQueries({ queryKey: k }));
-          },
-        )
-        .subscribe();
-      channels.push(ch);
-    };
-    if (opts?.likes !== false) {
-      subscribe("likes", `post_id=eq.${postId}`, [
-        ["feed"],
-        ["post-likes", postId],
-        ["post", postId],
-        ["post-likers", postId],
-      ]);
-    }
-    if (opts?.comments !== false) {
-      subscribe("comments", `post_id=eq.${postId}`, [
-        ["feed"],
-        ["post-comments", postId],
-        ["post", postId],
-      ]);
-    }
-    if (opts?.commentLikes !== false) {
-      subscribe("comment_likes", `comment_id=neq.00000000-0000-0000-0000-000000000000`, [
-        ["post-comments", postId],
-      ]);
-    }
-    return () => {
-      channels.forEach((c) => api.removeChannel(c));
-    };
-  }, [postId, qc, opts?.likes, opts?.comments, opts?.commentLikes]);
+  const keys: string[][] = [];
+  if (postId) {
+    if (opts?.likes !== false) keys.push(["post-likes", postId], ["post-likers", postId]);
+    if (opts?.comments !== false) keys.push(["post-comments", postId]);
+    keys.push(["post", postId]);
+  }
+  usePolledInvalidation(!!postId, keys, [postId, opts?.likes, opts?.comments, opts?.commentLikes]);
 }
 
 /**
- * Subscribes to new notifications for the given user and invalidates the
- * notifications query.
+ * Keeps the notification list/badge fresh for the given user by polling while
+ * the tab is visible.
  */
 export function useRealtimeNotifications(userId: string | null | undefined) {
-  const qc = useQueryClient();
-  useEffect(() => {
-    if (!userId) return;
-    const ch = api
-      .channel(`rt-notifications-${userId}`)
-      .on(
-        "postgres_changes" as never,
-        {
-          event: "*",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${userId}`,
-        } as never,
-        () => {
-          qc.invalidateQueries({ queryKey: ["notifications", userId] });
-          qc.invalidateQueries({ queryKey: ["notifications-unread", userId] });
-        },
-      )
-      .subscribe();
-    return () => {
-      api.removeChannel(ch);
-    };
-  }, [userId, qc]);
+  const keys: string[][] = userId
+    ? [["notifications", userId], ["notifications-unread", userId]]
+    : [];
+  usePolledInvalidation(!!userId, keys, [userId]);
 }
-

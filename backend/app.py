@@ -255,6 +255,67 @@ def _roles_for_user(conn, user_id: str) -> list[str]:
     return [r["role"] for r in rows]
 
 
+# Authorization rules for the generic /api/query write endpoint.
+# In the self-hosted deployment the backend connects as the table owner, so
+# Postgres RLS is bypassed and the SQL policies in the migrations never run.
+# These checks reproduce the relevant policies at the application layer.
+STAFF_ROLES = {"admin", "moderator", "support"}
+ADMIN_WRITE_TABLES = {"user_roles", "banners", "subscriptions", "transactions"}
+STAFF_WRITE_TABLES = {"audit_logs", "moderation_queue"}
+PRIVILEGED_PROFILE_COLUMNS = {"banned", "shadow_banned", "verified", "verified_at", "trust_score"}
+# Non-staff callers may only update/delete their own rows in these tables.
+OWNERSHIP_COLUMN = {"posts": "user_id", "comments": "user_id", "messages": "sender_id"}
+
+
+def _client_ip() -> str | None:
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.remote_addr
+
+
+def _authorize_write(
+    conn,
+    table: str,
+    op: str,
+    values: Any,
+    filters: list[dict[str, Any]],
+    user_id: str,
+) -> str | None:
+    """Return an error message if the write is not permitted, else None.
+
+    May append ownership filters to ``filters`` for non-staff callers so that
+    they can only affect their own rows.
+    """
+    if op not in {"insert", "update", "delete"}:
+        return None
+
+    roles = set(_roles_for_user(conn, user_id))
+    is_staff = bool(roles & STAFF_ROLES)
+    is_admin = "admin" in roles
+
+    if table in ADMIN_WRITE_TABLES and not is_admin:
+        return "Admin role required"
+    if table in STAFF_WRITE_TABLES and not is_staff:
+        return "Staff role required"
+    if table == "verification_requests" and op == "update" and not is_admin:
+        return "Admin role required"
+    if table == "reports" and op == "update" and not is_staff:
+        return "Staff role required"
+
+    if table == "profiles" and op == "update":
+        changed = set((values or {}).keys()) if isinstance(values, dict) else set()
+        if changed & PRIVILEGED_PROFILE_COLUMNS and not is_staff:
+            return "Staff role required"
+        if not is_staff:
+            filters.append({"column": "user_id", "op": "eq", "value": user_id})
+
+    if table in OWNERSHIP_COLUMN and op in {"update", "delete"} and not is_staff:
+        filters.append({"column": OWNERSHIP_COLUMN[table], "op": "eq", "value": user_id})
+
+    return None
+
+
 @app.get("/health")
 def health():
     return _json({"ok": True})
@@ -634,6 +695,9 @@ def query_table():
 
     user_id = _current_user_id()
     with db_connection(user_id) as conn:
+        auth_error = _authorize_write(conn, table, op, values, filters, user_id)
+        if auth_error:
+            return _json({"error": {"message": auth_error}}, 403)
         try:
             if op == "select":
                 sql = f"select * from {qualify_table(table)}"
@@ -663,6 +727,10 @@ def query_table():
                 rows_to_insert = values if isinstance(values, list) else [values]
                 inserted: list[dict[str, Any]] = []
                 for row in rows_to_insert:
+                    if table == "audit_logs":
+                        # Audit entries are stamped server-side so the actor and
+                        # source IP cannot be forged by the client.
+                        row = {**(row or {}), "admin_id": user_id, "ip": _client_ip()}
                     cols = list(row.keys())
                     params = {k: row[k] for k in cols}
                     columns_sql = ", ".join(f'"{c}"' for c in cols)

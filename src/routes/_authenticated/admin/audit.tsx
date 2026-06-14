@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/integrations/api/client";
-import { requireAdmin } from "@/lib/admin-guard";
+import { requireStaff } from "@/lib/admin-guard";
 import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_authenticated/admin/audit")({
   ssr: false,
-  beforeLoad: () => requireAdmin(),
+  beforeLoad: () => requireStaff(),
   component: AuditAdmin,
 });
 

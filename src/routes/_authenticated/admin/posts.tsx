@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/integrations/api/client";
-import { requireAdmin } from "@/lib/admin-guard";
+import { requireStaff } from "@/lib/admin-guard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SignedImage } from "@/components/signed-image";
@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/posts")({
   ssr: false,
-  beforeLoad: () => requireAdmin(),
+  beforeLoad: () => requireStaff(),
   component: PostsAdmin,
 });
 

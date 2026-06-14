@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router";
 import { api } from "@/integrations/api/client";
-import { LayoutDashboard, ShieldCheck, FileImage, Flag, Users, Image as ImageIcon, ScrollText } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, FileImage, Flag, Users, Image as ImageIcon, ScrollText, Inbox } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   ssr: false,
@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
     const { data: { user } } = await api.auth.getUser();
     if (!user) throw redirect({ to: "/auth" });
     const { data: roles } = await api.from("user_roles").select("role").eq("user_id", user.id);
-    const list = (roles ?? []).map((r) => r.role);
+    const list = (roles ?? []).map((r: { role: string }) => r.role);
     if (!list.includes("admin") && !list.includes("moderator") && !list.includes("support")) {
       throw redirect({ to: "/home" });
     }
@@ -19,6 +19,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 const ITEMS = [
   { to: "/admin", icon: LayoutDashboard, label: "Dashboard", exact: true },
+  { to: "/admin/moderation", icon: Inbox, label: "Fila" },
   { to: "/admin/verifications", icon: ShieldCheck, label: "Verificações" },
   { to: "/admin/posts", icon: FileImage, label: "Posts" },
   { to: "/admin/reports", icon: Flag, label: "Denúncias" },

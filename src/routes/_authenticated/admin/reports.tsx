@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/integrations/api/client";
-import { requireAdmin } from "@/lib/admin-guard";
+import { requireStaff } from "@/lib/admin-guard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/reports")({
   ssr: false,
-  beforeLoad: () => requireAdmin(),
+  beforeLoad: () => requireStaff(),
   component: ReportsAdmin,
 });
 
@@ -60,7 +60,7 @@ function ReportsAdmin() {
           {r.details && <p className="mt-2 text-sm">{r.details}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={() => resolve(r, "dismiss")}>Ignorar</Button>
-            <Button size="sm" variant="secondary" onClick={() => resolve(r, "remove")}>Remover conteúdo</Button>
+            {["post", "message", "comment"].includes(r.target_type) && <Button size="sm" variant="secondary" onClick={() => resolve(r, "remove")}>Remover conteúdo</Button>}
             {r.target_type === "user" && <Button size="sm" variant="secondary" onClick={() => resolve(r, "shadow")}>Shadow ban</Button>}
             {r.target_type === "user" && <Button size="sm" variant="destructive" onClick={() => resolve(r, "ban")}>Banir usuário</Button>}
           </div>

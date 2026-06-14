@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   ArrowUpRight,
   Activity,
+  Inbox,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -20,22 +21,27 @@ function Dashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: async () => {
-      const [users, postsPending, reportsOpen, verifPending] = await Promise.all([
+      const [users, queuePending, postsPending, reportsOpen, verifPending] = await Promise.all([
         api.from("profiles").select("*", { count: "exact", head: true }),
+        api.from("moderation_queue").select("*", { count: "exact", head: true }).eq("status", "pending"),
         api.from("posts").select("*", { count: "exact", head: true }).eq("moderation_status", "pending"),
         api.from("reports").select("*", { count: "exact", head: true }).eq("status", "open"),
         api.from("verification_requests").select("*", { count: "exact", head: true }).eq("status", "pending"),
       ]);
       return {
         users: users.count ?? 0,
+        queuePending: queuePending.count ?? 0,
         postsPending: postsPending.count ?? 0,
         reportsOpen: reportsOpen.count ?? 0,
         verifPending: verifPending.count ?? 0,
       };
     },
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
   });
 
   const stats = [
+    { label: "Na fila", value: data?.queuePending, icon: Inbox, to: "/admin/moderation", tone: "warn" as const },
     { label: "Usuários", value: data?.users, icon: Users, to: "/admin/users", tone: "neutral" as const },
     { label: "Posts pendentes", value: data?.postsPending, icon: FileImage, to: "/admin/posts", tone: "warn" as const },
     { label: "Denúncias abertas", value: data?.reportsOpen, icon: Flag, to: "/admin/reports", tone: "danger" as const },
@@ -53,7 +59,7 @@ function Dashboard() {
         </div>
         <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-secondary/60 px-2 text-[11px] font-medium text-muted-foreground">
           <Activity className="h-3 w-3" strokeWidth={2.2} />
-          Tempo real
+          Atualização automática
         </span>
       </header>
 
@@ -68,6 +74,7 @@ function Dashboard() {
           <h2 className="text-[13px] font-semibold tracking-tight">Ações rápidas</h2>
         </header>
         <div className="divide-y divide-border">
+          <QuickRow to="/admin/moderation" label="Abrir fila de moderação" />
           <QuickRow to="/admin/verifications" label="Revisar verificações pendentes" />
           <QuickRow to="/admin/posts" label="Moderar posts" />
           <QuickRow to="/admin/reports" label="Tratar denúncias abertas" />
